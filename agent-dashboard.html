@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Dashboard • Hawalina Ventures</title>
+  <link rel="stylesheet" href="agent-styles.css">
+  <style>
+    :root{
+      --primary:#6f4cff;--success:#10b981;--warn:#f59e0b;--info:#3b82f6;
+      --danger:#ef4444;--line:#ece7ff;--muted:#6b6b7a;--text:#1f1f2a;
+      --shadow:0 8px 24px rgba(25,10,70,.08);--r:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:var(--text);
+      background:radial-gradient(1100px 500px at 60% 0%,rgba(111,76,255,.12),transparent 55%),#f7f4ff;
+    }
+    a{text-decoration:none;color:inherit}
+
+    /* ── App shell ── */
+    .app{display:flex;min-height:100vh}
+
+    /* ── Sidebar ── */
+    .sidebar{
+      width:250px;padding:20px 16px;
+      background:linear-gradient(180deg,#1a0a3c,#120730);
+      color:#fff;position:sticky;top:0;height:100vh;
+      display:flex;flex-direction:column;flex-shrink:0;
+    }
+    .brand{display:flex;gap:10px;align-items:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:12px}
+    .brandIcon{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:18px;flex-shrink:0}
+    .brand h2{font-size:15px;margin:0;line-height:1.2}
+    .brand p{margin:2px 0 0;color:rgba(255,255,255,.55);font-size:11px}
+    .nav{display:flex;flex-direction:column;gap:3px;flex:1}
+    .nav a{
+      padding:9px 11px;border-radius:11px;
+      color:rgba(255,255,255,.75);display:flex;gap:9px;align-items:center;font-size:13px;
+      transition:background .15s;
+    }
+    .nav a:hover,.nav a.active{background:rgba(255,255,255,.12);color:#fff}
+    .navIco{width:17px;height:17px;border-radius:5px;display:inline-grid;place-items:center;background:rgba(255,255,255,.1);font-size:10px;flex-shrink:0}
+    .sideFooter{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)}
+    .agentMeta{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+    .agentAvatar{width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:16px;flex-shrink:0}
+    .agentName{font-weight:700;font-size:13px;margin:0;color:#fff}
+    .agentId{color:rgba(255,255,255,.5);font-size:11px;margin:2px 0 0}
+    .logoutBtn{
+      width:100%;padding:9px 12px;border-radius:11px;
+      border:1px solid rgba(255,255,255,.14);background:transparent;
+      color:rgba(255,255,255,.65);cursor:pointer;font-size:12px;
+      display:flex;gap:8px;align-items:center;justify-content:center;
+    }
+    .logoutBtn:hover{background:rgba(220,50,50,.2);color:#fff}
+
+    /* ── Main content ── */
+    .main{flex:1;padding:24px 24px 48px;min-width:0}
+    @media(max-width:620px){.sidebar{display:none}.main{padding:16px 14px 32px}}
+
+    /* ── Top bar ── */
+    .topBar{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+    .topBar h1{margin:0;font-size:24px}
+    .topBar p{margin:4px 0 0;color:var(--muted);font-size:13px}
+    .btnPrimary{
+      padding:10px 16px;border-radius:12px;border:none;
+      background:var(--primary);color:#fff;cursor:pointer;
+      font-weight:700;font-size:13px;display:inline-flex;gap:8px;align-items:center;
+      box-shadow:0 6px 16px rgba(111,76,255,.3);
+    }
+    .btnPrimary:hover{background:#5c3de0}
+
+    /* ── KPI stat cards ── */
+    .statsGrid{
+      display:grid;grid-template-columns:repeat(4,minmax(190px,1fr));
+      gap:13px;margin-bottom:14px;
+    }
+    @media(max-width:1100px){.statsGrid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:580px){.statsGrid{grid-template-columns:1fr}}
+    .statCard{
+      background:rgba(255,255,255,.92);border:1px solid var(--line);
+      border-radius:var(--r);padding:15px 15px 17px;
+      box-shadow:var(--shadow);position:relative;overflow:hidden;
+      display:flex;gap:11px;align-items:flex-start;
+    }
+    .statCard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+    .statCard.c-primary::before{background:linear-gradient(180deg,#6f4cff,#a78bfa)}
+    .statCard.c-success::before{background:linear-gradient(180deg,#34d399,#10b981)}
+    .statCard.c-warning::before{background:linear-gradient(180deg,#fbbf24,#f59e0b)}
+    .statCard.c-info::before{background:linear-gradient(180deg,#60a5fa,#3b82f6)}
+    .statIco{width:44px;height:44px;border-radius:13px;background:rgba(111,76,255,.09);border:1px solid rgba(111,76,255,.16);display:grid;place-items:center;font-size:20px;flex-shrink:0}
+    .statLabel{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#3c3c52;font-weight:800;margin:0 0 5px}
+    .statVal{font-size:21px;font-weight:900;margin:0 0 4px;color:var(--text)}
+    .statHint{font-size:12px;color:var(--muted);margin:0}
+    .pos{color:var(--success);font-weight:700}
+    .neg{color:var(--danger);font-weight:700}
+
+    /* ── Performance bar ── */
+    .perfBar{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+      background:rgba(255,255,255,.92);border:1px solid var(--line);
+      border-radius:var(--r);padding:16px;box-shadow:var(--shadow);
+      margin-bottom:14px;
+    }
+    @media(max-width:900px){.perfBar{grid-template-columns:repeat(2,1fr)}}
+    .perfItem{text-align:center;padding:6px}
+    .perfVal{font-size:19px;font-weight:900;color:var(--text);margin:0 0 3px}
+    .perfLabel{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:.04em;margin:0}
+
+    /* ── Dashboard grid ── */
+    .dashGrid{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:14px}
+    @media(max-width:1100px){.dashGrid{grid-template-columns:1fr 1fr}}
+    @media(max-width:640px){.dashGrid{grid-template-columns:1fr}}
+    .card{
+      background:rgba(255,255,255,.92);border:1px solid var(--line);
+      border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;
+    }
+    .cardSpanFull{grid-column:1/-1}
+    .cardHead{
+      padding:13px 15px;display:flex;justify-content:space-between;
+      align-items:center;border-bottom:1px solid var(--line);
+    }
+    .cardHead h3{margin:0;font-size:14px;color:var(--text)}
+    .viewAll{font-size:12px;color:var(--primary);font-weight:700}
+    .viewAll:hover{text-decoration:underline}
+    .cardBody{padding:13px 15px}
+    .filterSel{
+      padding:5px 9px;border:1px solid var(--line);
+      border-radius:9px;font-size:12px;outline:none;background:#fff;cursor:pointer;
+    }
+
+    /* ── Sales list ── */
+    .saleItem{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+    .saleItem:last-child{border-bottom:none}
+    .saleCustomer{font-weight:700;font-size:13px;margin:0 0 2px;color:var(--text)}
+    .saleProduct{font-size:12px;color:var(--muted);margin:0}
+    .saleAmt{text-align:right}
+    .saleAmtVal{font-weight:800;font-size:13px;color:var(--text);margin:0 0 2px}
+    .saleComm{font-size:12px;color:var(--success);font-weight:700;margin:0}
+
+    /* ── Stock list ── */
+    .stockItem{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+    .stockItem:last-child{border-bottom:none}
+    .stockName{font-weight:700;font-size:13px;color:var(--text);margin:0 0 4px}
+    .stockBar{height:6px;border-radius:3px;background:rgba(111,76,255,.1);overflow:hidden;flex:1;min-width:80px}
+    .stockFill{height:100%;border-radius:3px;background:linear-gradient(90deg,#6f4cff,#a78bfa)}
+    .stockCount{font-weight:800;font-size:13px;color:var(--text);white-space:nowrap;flex-shrink:0}
+
+    /* ── Notifications ── */
+    .notifItem{display:flex;gap:9px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+    .notifItem:last-child{border-bottom:none}
+    .notifDot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+    .notifDot.unread{background:var(--primary)}
+    .notifDot.read{background:#d1d5db}
+    .notifMsg{font-size:13px;margin:0 0 2px}
+    .notifItem.unread .notifMsg{font-weight:700;color:var(--text)}
+    .notifItem.read .notifMsg{color:var(--muted)}
+    .notifDate{font-size:11px;color:#9ca3af;margin:0}
+    .notifBadge{font-size:10px;color:var(--primary);font-weight:800;white-space:nowrap;margin-left:auto;flex-shrink:0}
+
+    /* ── Quick actions ── */
+    .quickGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    @media(max-width:700px){.quickGrid{grid-template-columns:repeat(2,1fr)}}
+    .actionBtn{
+      padding:14px 12px;border-radius:14px;border:1px solid var(--line);
+      background:#fff;cursor:pointer;display:flex;gap:10px;align-items:center;
+      font-size:13px;text-align:left;transition:all .15s;
+    }
+    .actionBtn:hover{border-color:rgba(111,76,255,.3);background:rgba(111,76,255,.04);transform:translateY(-1px)}
+    .actionBtn.primary{background:rgba(111,76,255,.06);border-color:rgba(111,76,255,.25)}
+    .actionIco{font-size:20px;flex-shrink:0}
+    .actionTitle{font-weight:700;font-size:13px;color:var(--text);margin:0 0 2px}
+    .actionSub{font-size:11px;color:var(--muted);margin:0}
+
+    /* ── Empty / loading states ── */
+    .emptyState{color:#9ca3af;font-size:13px;text-align:center;padding:18px 0}
+    canvas{width:100%!important;display:block}
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brandIcon">✦</div>
+      <div><h2>Hawalina Ventures</h2><p>Agent Portal</p></div>
+    </div>
+    <nav class="nav">
+      <a class="active" href="agent-dashboard.html"><span class="navIco">🧩</span>Dashboard</a>
+      <a href="agent-record-sale.html"><span class="navIco">💰</span>Record Sale</a>
+      <a href="agent-sales.html"><span class="navIco">📋</span>My Sales</a>
+      <a href="agent-stock.html"><span class="navIco">📦</span>My Stock</a>
+      <a href="agent-commission.html"><span class="navIco">💵</span>My Commission</a>
+      <a href="agent-performance.html"><span class="navIco">📈</span>Performance</a>
+    </nav>
+    <div class="sideFooter">
+      <div class="agentMeta">
+        <div class="agentAvatar">👤</div>
+        <div>
+          <p class="agentName" id="sidebarName">Loading...</p>
+          <p class="agentId"  id="sidebarId">—</p>
+        </div>
+      </div>
+      <button class="logoutBtn" id="logoutBtn">🚪 &nbsp;Logout</button>
+    </div>
+  </aside>
+
+  <!-- ── Main content ── -->
+  <main class="main">
+
+    <!-- Top bar -->
+    <div class="topBar">
+      <div>
+        <h1>Welcome back, <span id="welcomeName">Agent</span>! 👋</h1>
+        <p>Here's your performance overview</p>
+      </div>
+      <button class="btnPrimary" onclick="location.href='agent-record-sale.html'">
+        ➕ Record New Sale
+      </button>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="statsGrid">
+      <div class="statCard c-primary">
+        <div class="statIco">💰</div>
+        <div>
+          <p class="statLabel">Today's Sales</p>
+          <p class="statVal" id="todaySales">GHS —</p>
+          <p class="statHint"><span id="todayCount">0</span> transactions today</p>
+        </div>
+      </div>
+      <div class="statCard c-success">
+        <div class="statIco">📊</div>
+        <div>
+          <p class="statLabel">This Month</p>
+          <p class="statVal" id="monthSales">GHS —</p>
+          <p class="statHint"><span id="monthGrowth" class="pos">—</span> vs last month</p>
+        </div>
+      </div>
+      <div class="statCard c-warning">
+        <div class="statIco">💵</div>
+        <div>
+          <p class="statLabel">Commission Earned</p>
+          <p class="statVal" id="totalCommission">GHS —</p>
+          <p class="statHint">This month: <strong id="monthCommission">GHS —</strong></p>
+        </div>
+      </div>
+      <div class="statCard c-info">
+        <div class="statIco">📦</div>
+        <div>
+          <p class="statLabel">Stock on Hand</p>
+          <p class="statVal" id="stockUnits">— units</p>
+          <p class="statHint" id="stockVariety">Loading...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance bar -->
+    <div class="perfBar">
+      <div class="perfItem">
+        <p class="perfVal" id="outstandingBalance">GHS —</p>
+        <p class="perfLabel">Outstanding Balance</p>
+      </div>
+      <div class="perfItem">
+        <p class="perfVal" id="totalPaid">GHS —</p>
+        <p class="perfLabel">Total Paid Back</p>
+      </div>
+      <div class="perfItem">
+        <p class="perfVal" id="totalSalesValue">GHS —</p>
+        <p class="perfLabel">Total Sales Value</p>
+      </div>
+      <div class="perfItem">
+        <p class="perfVal" id="agentRank">#—</p>
+        <p class="perfLabel">Your Rank</p>
+      </div>
+    </div>
+
+    <!-- Dashboard grid -->
+    <div class="dashGrid">
+
+      <!-- Sales trend chart – full width -->
+      <div class="card cardSpanFull">
+        <div class="cardHead">
+          <h3>📈 Your Sales Trend</h3>
+          <select class="filterSel" id="trendPeriod">
+            <option value="7">Last 7 Days</option>
+            <option value="30">Last 30 Days</option>
+          </select>
+        </div>
+        <div class="cardBody">
+          <canvas id="salesChart" height="160"></canvas>
+        </div>
+      </div>
+
+      <!-- Recent sales -->
+      <div class="card">
+        <div class="cardHead">
+          <h3>💰 Recent Sales</h3>
+          <a class="viewAll" href="agent-sales.html">View All →</a>
+        </div>
+        <div class="cardBody" id="recentSalesList">
+          <p class="emptyState">Loading...</p>
+        </div>
+      </div>
+
+      <!-- Current stock -->
+      <div class="card">
+        <div class="cardHead">
+          <h3>📦 Current Stock</h3>
+          <a class="viewAll" href="agent-stock.html">Details →</a>
+        </div>
+        <div class="cardBody" id="currentStockList">
+          <p class="emptyState">Loading...</p>
+        </div>
+      </div>
+
+      <!-- Commission breakdown -->
+      <div class="card">
+        <div class="cardHead">
+          <h3>💵 Commission</h3>
+          <a class="viewAll" href="agent-commission.html">View All →</a>
+        </div>
+        <div class="cardBody">
+          <canvas id="commissionChart" height="130"></canvas>
+          <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;font-size:13px">
+            <span style="display:flex;align-items:center;gap:7px">
+              <span style="width:10px;height:10px;border-radius:3px;background:#6f4cff;flex-shrink:0"></span>
+              This Week: <strong id="weekComm">GHS —</strong>
+            </span>
+            <span style="display:flex;align-items:center;gap:7px">
+              <span style="width:10px;height:10px;border-radius:3px;background:#10b981;flex-shrink:0"></span>
+              This Month: <strong id="monthComm2">GHS —</strong>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notifications – full width -->
+      <div class="card cardSpanFull">
+        <div class="cardHead">
+          <h3>🔔 Notifications</h3>
+          <span id="unreadBadge" style="font-size:12px;color:var(--primary);font-weight:700"></span>
+        </div>
+        <div class="cardBody" id="notifList">
+          <p class="emptyState">Loading...</p>
+        </div>
+      </div>
+
+      <!-- Quick actions – full width -->
+      <div class="card cardSpanFull">
+        <div class="cardHead"><h3>⚡ Quick Actions</h3></div>
+        <div class="cardBody">
+          <div class="quickGrid">
+            <button class="actionBtn primary" onclick="location.href='agent-record-sale.html'">
+              <span class="actionIco">➕</span>
+              <div><p class="actionTitle">Record Sale</p><p class="actionSub">Add a new transaction</p></div>
+            </button>
+            <button class="actionBtn" onclick="location.href='agent-sales.html'">
+              <span class="actionIco">📋</span>
+              <div><p class="actionTitle">View Sales</p><p class="actionSub">Your sales history</p></div>
+            </button>
+            <button class="actionBtn" onclick="location.href='agent-stock.html'">
+              <span class="actionIco">📦</span>
+              <div><p class="actionTitle">Check Stock</p><p class="actionSub">Current inventory</p></div>
+            </button>
+            <button class="actionBtn" onclick="location.href='agent-commission.html'">
+              <span class="actionIco">💰</span>
+              <div><p class="actionTitle">My Earnings</p><p class="actionSub">Track commissions</p></div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /dashGrid -->
+  </main>
+</div><!-- /app -->
+
+<script type="module">
+  import { requireRole, logout, onAuthChange } from './auth.js';
+  import {
+    getAllAgents, getSales, getDistributions,
+    getNotifications, markNotificationAsRead
+  } from './firestore-db.js';
+
+  let agentId   = null;   // Firestore doc ID
+  let agentData = null;   // full agent doc
+  let salesData = [];
+  let distData  = [];
+
+  // ── Auth guard ────────────────────────────────────────────────
+  // requireRole('agent') waits for Firebase to restore the session,
+  // checks the email domain (@agent.hawalina.com), then lets us proceed.
+  async function init() {
+    const allowed = await requireRole('agent');
+    if (!allowed) return;
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      if (confirm('Are you sure you want to logout?')) {
+        await logout();
+        window.location.href = 'index.html';
+      }
+    });
+
+    // Once we know the Firebase user, find their Firestore agent doc
+    onAuthChange(async (user) => {
+      if (!user) return;
+
+      const allRes = await getAllAgents();
+      if (!allRes.success) return;
+
+      // Primary match: by firebaseUid (set when agent is created via agents.html)
+      // Fallback: by nationalId extracted from the Firebase email
+      // e.g.  gha-123456789-0@agent.hawalina.com  →  GHA-123456789-0
+      let match = allRes.data.find(a => a.firebaseUid === user.uid);
+
+      if (!match && user.email) {
+        const nationalIdFromEmail = user.email.split('@')[0].toUpperCase();
+        match = allRes.data.find(a =>
+          (a.nationalId || '').toUpperCase() === nationalIdFromEmail
+        );
+
+        if (match) {
+          // Silently backfill the missing firebaseUid so future logins use the fast path
+          try {
+            const { doc, updateDoc, getFirestore } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+            await updateDoc(doc(getFirestore(), 'agents', match.id), { firebaseUid: user.uid });
+          } catch (_) { /* non-critical */ }
+        }
+      }
+
+      if (!match) {
+        // Retry once more before giving up — Firestore can be slow on cold start
+        await new Promise(r => setTimeout(r, 1200));
+        const retryRes = await getAllAgents();
+        if (retryRes.success) {
+          match = retryRes.data.find(a => a.firebaseUid === user.uid);
+          if (!match && user.email) {
+            const nid = user.email.split('@')[0].toUpperCase();
+            match = retryRes.data.find(a => (a.nationalId||'').toUpperCase() === nid);
+          }
+        }
+      }
+
+      if (!match) {
+        document.getElementById('sidebarName').textContent = 'Profile error';
+        document.getElementById('sidebarId').textContent   = 'Contact admin';
+        console.warn('Agent profile not found for uid:', user.uid);
+        return;
+      }
+
+      agentId   = match.id;
+      agentData = match;
+
+      // Populate sidebar identity
+      const firstName = (match.fullName || match.name || 'Agent').split(' ')[0];
+      document.getElementById('sidebarName').textContent  = match.fullName || match.name || 'Agent';
+      document.getElementById('sidebarId').textContent    = match.nationalId || '—';
+      document.getElementById('welcomeName').textContent  = firstName;
+
+      await loadDashboard();
+    });
+  }
+
+  // ── Load all data in parallel ─────────────────────────────────
+  async function loadDashboard() {
+    const [salesRes, distRes, notifRes, allAgentsRes] = await Promise.all([
+      getSales(agentId),
+      getDistributions(agentId),
+      getNotifications(agentId),
+      getAllAgents()
+    ]);
+
+    salesData = salesRes.success ? salesRes.data : [];
+    distData  = distRes.success  ? distRes.data  : [];
+    const notifs     = notifRes.success     ? notifRes.data     : [];
+    const allAgents  = allAgentsRes.success ? allAgentsRes.data : [];
+
+    renderStatCards();
+    renderPerfBar(allAgents);
+    renderRecentSales();
+    renderStock();
+    renderCommission();
+    renderNotifications(notifs);
+    drawSalesChart(7);
+    drawCommissionChart();
+  }
+
+  // ── Stat cards ────────────────────────────────────────────────
+  function renderStatCards() {
+    const now   = new Date();
+    const thisM = now.getMonth(), thisY = now.getFullYear();
+    const lastM = thisM === 0 ? 11 : thisM - 1;
+    const lastY = thisM === 0 ? thisY - 1 : thisY;
+
+    // Today
+    const todayStr  = now.toDateString();
+    const todaySales = salesData.filter(s => toDate(s.saleDate)?.toDateString() === todayStr);
+    const todayTotal = sum(todaySales, 'totalSellingPrice');
+
+    // This month vs last month
+    const thisMSales = salesData.filter(s => { const d = toDate(s.saleDate); return d && d.getMonth()===thisM && d.getFullYear()===thisY; });
+    const lastMSales = salesData.filter(s => { const d = toDate(s.saleDate); return d && d.getMonth()===lastM && d.getFullYear()===lastY; });
+    const thisMTotal = sum(thisMSales, 'totalSellingPrice');
+    const lastMTotal = sum(lastMSales, 'totalSellingPrice');
+    const thisMComm  = sum(thisMSales, 'agentCommission');
+    const growth     = lastMTotal > 0 ? (((thisMTotal - lastMTotal) / lastMTotal) * 100).toFixed(1) : null;
+
+    // Stock on hand: dist qty minus sold qty per product key
+    const stockMap = buildStockMap();
+    const totalUnits = Object.values(stockMap).reduce((s, v) => s + v, 0);
+    const varieties  = Object.keys(stockMap).filter(k => stockMap[k] > 0).length;
+
+    // Set values
+    set('todaySales',      'GHS ' + fmt(todayTotal));
+    set('todayCount',      todaySales.length);
+    set('monthSales',      'GHS ' + fmt(thisMTotal));
+    set('totalCommission', 'GHS ' + fmt(agentData.totalCommission || 0));
+    set('monthCommission', 'GHS ' + fmt(thisMComm));
+    set('stockUnits',      totalUnits + ' units');
+    set('stockVariety',    varieties + ' product type' + (varieties !== 1 ? 's' : ''));
+
+    const gEl = document.getElementById('monthGrowth');
+    if (growth !== null) {
+      gEl.textContent = (parseFloat(growth) >= 0 ? '↗ +' : '↘ ') + growth + '%';
+      gEl.className   = parseFloat(growth) >= 0 ? 'pos' : 'neg';
+    } else {
+      gEl.textContent = 'First month on record';
+      gEl.className   = '';
+    }
+  }
+
+  // ── Performance bar ───────────────────────────────────────────
+  function renderPerfBar(allAgents) {
+    const totalSalesVal = sum(salesData, 'totalSellingPrice');
+
+    // Rank by totalCommission among active agents
+    const ranked = [...allAgents]
+      .filter(a => a.isActive !== false)
+      .sort((a, b) => (b.totalCommission || 0) - (a.totalCommission || 0));
+    const rankIdx = ranked.findIndex(a => a.id === agentId);
+    const rank    = rankIdx >= 0 ? '#' + (rankIdx + 1) : '#—';
+
+    set('outstandingBalance', 'GHS ' + fmt(agentData.totalOwed       || 0));
+    set('totalPaid',          'GHS ' + fmt(agentData.totalPaid       || 0));
+    set('totalSalesValue',    'GHS ' + fmt(totalSalesVal));
+    set('agentRank',          rank);
+  }
+
+  // ── Recent sales ──────────────────────────────────────────────
+  function renderRecentSales() {
+    const el    = document.getElementById('recentSalesList');
+    const items = salesData.slice(0, 6);
+    if (!items.length) { el.innerHTML = '<p class="emptyState">No sales recorded yet.</p>'; return; }
+
+    el.innerHTML = items.map(s => `
+      <div class="saleItem">
+        <div>
+          <p class="saleCustomer">${esc(s.customerName || s.customer || 'Customer')}</p>
+          <p class="saleProduct">${esc(s.hairBrand || s.brand || '—')} ${s.length ? s.length + '"' : ''} × ${s.quantity || 1}</p>
+        </div>
+        <div class="saleAmt">
+          <p class="saleAmtVal">GHS ${fmt(s.totalSellingPrice)}</p>
+          <p class="saleComm">+GHS ${fmt(s.agentCommission)}</p>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── Stock list ────────────────────────────────────────────────
+  function renderStock() {
+    const el       = document.getElementById('currentStockList');
+    const stockMap = buildStockMap();
+    const distTots = buildDistTotalMap();
+    const entries  = Object.entries(stockMap).filter(([, v]) => v > 0);
+
+    if (!entries.length) { el.innerHTML = '<p class="emptyState">No stock assigned yet.</p>'; return; }
+
+    el.innerHTML = entries.map(([name, qty]) => {
+      const total = distTots[name] || qty;
+      const pct   = Math.round((qty / total) * 100);
+      return `<div class="stockItem">
+        <div style="flex:1;min-width:0">
+          <p class="stockName">${esc(name)}</p>
+          <div class="stockBar"><div class="stockFill" style="width:${pct}%"></div></div>
+        </div>
+        <p class="stockCount">${qty} units</p>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Commission ────────────────────────────────────────────────
+  function renderCommission() {
+    const now       = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay()); weekStart.setHours(0,0,0,0);
+
+    const weekComm  = sum(salesData.filter(s => { const d = toDate(s.saleDate); return d && d >= weekStart; }), 'agentCommission');
+    const monthComm = sum(salesData.filter(s => { const d = toDate(s.saleDate); return d && d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear(); }), 'agentCommission');
+
+    set('weekComm',   'GHS ' + fmt(weekComm));
+    set('monthComm2', 'GHS ' + fmt(monthComm));
+  }
+
+  // ── Notifications ─────────────────────────────────────────────
+  function renderNotifications(notifs) {
+    const el     = document.getElementById('notifList');
+    const unread = notifs.filter(n => !n.isRead).length;
+    const badge  = document.getElementById('unreadBadge');
+    badge.textContent = unread > 0 ? `${unread} unread` : '';
+
+    if (!notifs.length) { el.innerHTML = '<p class="emptyState">No notifications yet.</p>'; return; }
+
+    el.innerHTML = notifs.slice(0, 10).map(n => {
+      const isNew = !n.isRead;
+      return `<div class="notifItem ${isNew ? 'unread' : 'read'}" data-id="${n.id}">
+        <div class="notifDot ${isNew ? 'unread' : 'read'}"></div>
+        <div style="flex:1;min-width:0">
+          <p class="notifMsg">${esc(n.message || '')}</p>
+          <p class="notifDate">${toDateStr(n.dateCreated || n.date)}</p>
+        </div>
+        ${isNew ? '<span class="notifBadge">NEW</span>' : ''}
+      </div>`;
+    }).join('');
+
+    // Mark as read on click
+    el.querySelectorAll('.notifItem.unread').forEach(item => {
+      item.addEventListener('click', async () => {
+        await markNotificationAsRead(item.dataset.id);
+        item.classList.replace('unread', 'read');
+        item.querySelector('.notifDot').className = 'notifDot read';
+        const b = item.querySelector('.notifBadge');
+        if (b) b.remove();
+        // Decrement badge
+        const cur = parseInt(badge.textContent) || 0;
+        badge.textContent = cur > 1 ? (cur - 1) + ' unread' : '';
+      });
+    });
+  }
+
+  // ── Sales trend chart ─────────────────────────────────────────
+  function drawSalesChart(days) {
+    const canvas = document.getElementById('salesChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width  = canvas.offsetWidth || 600;
+    canvas.height = 160;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const now     = new Date();
+    const buckets = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now); d.setDate(now.getDate() - i); d.setHours(0,0,0,0);
+      const label = days <= 7
+        ? d.toLocaleDateString('en-GB', { weekday: 'short' })
+        : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      buckets.push({ label, date: d, val: 0 });
+    }
+    salesData.forEach(s => {
+      const d = toDate(s.saleDate);
+      if (!d) return;
+      const b = buckets.find(b => b.date.toDateString() === d.toDateString());
+      if (b) b.val += s.totalSellingPrice || 0;
+    });
+
+    drawBarChart(ctx, canvas.width, canvas.height, buckets, '#6f4cff', 'rgba(111,76,255,.22)');
+  }
+
+  document.getElementById('trendPeriod').addEventListener('change', function() {
+    drawSalesChart(parseInt(this.value));
+  });
+
+  // ── Commission chart (line) ───────────────────────────────────
+  function drawCommissionChart() {
+    const canvas = document.getElementById('commissionChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width  = canvas.offsetWidth || 300;
+    canvas.height = 130;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const now     = new Date();
+    const buckets = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now); d.setDate(now.getDate() - i); d.setHours(0,0,0,0);
+      buckets.push({ date: d, val: 0 });
+    }
+    salesData.forEach(s => {
+      const d = toDate(s.saleDate);
+      if (!d) return;
+      const b = buckets.find(b => b.date.toDateString() === d.toDateString());
+      if (b) b.val += s.agentCommission || 0;
+    });
+
+    const maxV = Math.max(...buckets.map(b => b.val), 1);
+    const pL = 8, pR = 8, pT = 10, pH = canvas.height - pT - 10;
+    const pts = buckets.map((b, i) => ({
+      x: pL + (i / (buckets.length - 1)) * (canvas.width - pL - pR),
+      y: pT + pH - (b.val / maxV) * pH
+    }));
+
+    // Fill
+    const fill = ctx.createLinearGradient(0, pT, 0, pT + pH);
+    fill.addColorStop(0, 'rgba(16,185,129,.28)');
+    fill.addColorStop(1, 'rgba(16,185,129,.02)');
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pT + pH);
+    pts.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(pts[pts.length - 1].x, pT + pH);
+    ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    pts.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2.5; ctx.stroke();
+
+    // Dots
+    pts.forEach(p => {
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+      ctx.fillStyle = '#10b981'; ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+    });
+  }
+
+  // ── Shared bar-chart renderer ─────────────────────────────────
+  function drawBarChart(ctx, W, H, buckets, colorTop, colorBot) {
+    const pL = 40, pR = 10, pT = 20, pB = 28;
+    const w  = W - pL - pR;
+    const h  = H - pT - pB;
+    const maxV  = Math.max(...buckets.map(b => b.val), 1);
+    const gap   = w / buckets.length;
+    const barW  = gap * 0.6;
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(111,76,255,.08)'; ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = pT + h - (h / 4) * i;
+      ctx.beginPath(); ctx.moveTo(pL, y); ctx.lineTo(pL + w, y); ctx.stroke();
+      ctx.fillStyle = '#9ca3af'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(fmtShort((maxV / 4) * i), pL - 3, y + 4);
+    }
+
+    buckets.forEach((b, i) => {
+      const bh   = (b.val / maxV) * h;
+      const x    = pL + gap * i + gap * 0.2;
+      const y    = pT + h - bh;
+      const grad = ctx.createLinearGradient(x, y, x, pT + h);
+      grad.addColorStop(0, colorTop); grad.addColorStop(1, colorBot);
+      ctx.fillStyle = grad;
+
+      // Rounded-top bar
+      const r = 4;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y); ctx.lineTo(x + barW - r, y);
+      ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+      ctx.lineTo(x + barW, pT + h); ctx.lineTo(x, pT + h);
+      ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.fill();
+
+      // x-axis label (skip some when many days)
+      if (buckets.length <= 10 || i % Math.ceil(buckets.length / 10) === 0) {
+        ctx.fillStyle = '#9ca3af'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(b.label, x + barW / 2, pT + h + 18);
+      }
+    });
+  }
+
+  // ── Stock helpers ─────────────────────────────────────────────
+  // Builds {productKey: currentAvailableQty} by subtracting sales from distributions
+  function buildStockMap() {
+    const map = {};
+    distData.forEach(d => {
+      eachItem(d, (item) => {
+        const k = `${item.hairBrand || d.hairBrand || '?'} ${item.length || d.length || '?'}"`;
+        map[k] = (map[k] || 0) + (item.quantity || 0);
+      });
+    });
+    salesData.forEach(s => {
+      eachItem(s, (item) => {
+        const k = `${item.hairBrand || s.hairBrand || s.brand || '?'} ${item.length || s.length || '?'}"`;
+        if (map[k] !== undefined) map[k] = Math.max(0, map[k] - (item.quantity || 0));
+      });
+    });
+    return map;
+  }
+
+  function buildDistTotalMap() {
+    const map = {};
+    distData.forEach(d => {
+      eachItem(d, (item) => {
+        const k = `${item.hairBrand || d.hairBrand || '?'} ${item.length || d.length || '?'}"`;
+        map[k] = (map[k] || 0) + (item.quantity || 0);
+      });
+    });
+    return map;
+  }
+
+  // Handles both flat records (hairBrand/length/quantity) and items[] arrays
+  function eachItem(record, cb) {
+    if (record.items && record.items.length) {
+      record.items.forEach(cb);
+    } else {
+      cb({ hairBrand: record.hairBrand || record.brand, length: record.length, quantity: record.quantity });
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────
+  function toDate(val) {
+    if (!val) return null;
+    if (val.toDate)  return val.toDate();
+    if (val.seconds) return new Date(val.seconds * 1000);
+    return new Date(val);
+  }
+  function toDateStr(val) {
+    const d = toDate(val);
+    return d ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  }
+  function fmt(n) {
+    return Number(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtShort(n) {
+    n = Number(n || 0);
+    return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n.toFixed(0);
+  }
+  function esc(str) {
+    return String(str ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+  }
+  function sum(arr, key) { return arr.reduce((s, d) => s + (d[key] || 0), 0); }
+  function set(id, val)  { const el = document.getElementById(id); if (el) el.textContent = val; }
+
+  init();
+</script>
+</body>
+</html>

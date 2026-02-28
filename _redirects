@@ -1,0 +1,18 @@
+# Netlify Redirects - Security Configuration
+# Protect against unauthorized access
+
+# Block access to old filenames (if someone knows them)
+/admin-login.html       /404.html       404
+/ceo-dashboard.html     /404.html       404
+/ceo-warehouse.html     /404.html       404
+/ceo-products.html      /404.html       404
+/ceo-agents.html        /404.html       404
+/ceo-distribute.html    /404.html       404
+/ceo-sales.html         /404.html       404
+/ceo-payments.html      /404.html       404
+/ceo-stock-balance.html /404.html       404
+/ceo-analytics.html     /404.html       404
+/ceo-reports.html       /404.html       404
+
+# Prevent directory listing
+/*                      /index.html     404

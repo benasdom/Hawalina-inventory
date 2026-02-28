@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Stock Balance - Hawalina Ventures</title>
+<link rel="stylesheet" href="ceo-styles.css">
+</head>
+<body>
+
+    <script type="module">
+        // SECURITY: Auth check - Redirect if not authenticated as CEO
+        import { isAuthenticated, getUserRole } from './auth.js';
+        
+        // Check authentication immediately
+        const checkAuth = () => {
+            const isAuth = sessionStorage.getItem('userRole') === 'ceo';
+            const hasSession = sessionStorage.getItem('userId');
+            
+            if (!isAuth || !hasSession) {
+                // Not authenticated - redirect to 404
+                window.location.replace('404.html');
+                return false;
+            }
+            return true;
+        };
+        
+        // Run check immediately
+        if (!checkAuth()) {
+            throw new Error('Unauthorized access');
+        }
+        
+        // Re-check every 30 seconds
+        setInterval(checkAuth, 30000);
+    </script>
+
+<div class="sidebar">
+<div class="logo-section"><div class="logo-icon">✦</div><h2>Hawalina Ventures</h2><p class="user-role">CEO Portal</p></div>
+<nav class="main-nav">
+<a href="dash4m8p.html" class="nav-link"><span class="nav-icon">📊</span><span>Dashboard</span></a>
+<a href="wh9r2t6.html" class="nav-link"><span class="nav-icon">🏭</span><span>Warehouse</span></a>
+<a href="prod3x7n.html" class="nav-link"><span class="nav-icon">📦</span><span>Products</span></a>
+<a href="agt5h2j9.html" class="nav-link"><span class="nav-icon">👥</span><span>Agents</span></a>
+<a href="dist8c4b.html" class="nav-link"><span class="nav-icon">🚚</span><span>Distribute Stock</span></a>
+<a href="sale1f6k.html" class="nav-link"><span class="nav-icon">💰</span><span>All Sales</span></a>
+<a href="pay4t8r2.html" class="nav-link"><span class="nav-icon">💵</span><span>Payments</span></a>
+<a href="stk7w3e9.html" class="nav-link active"><span class="nav-icon">📋</span><span>Stock Balance</span></a>
+<a href="anlyt2k6.html" class="nav-link"><span class="nav-icon">📈</span><span>Analytics</span></a>
+<a href="rpt9i5o3.html" class="nav-link"><span class="nav-icon">📑</span><span>Reports</span></a>
+</nav>
+<div class="sidebar-footer"><div class="user-info"><div class="user-avatar">👨‍💼</div><div><p class="user-name">CEO</p></div></div><button class="logout-btn" onclick="logout()">🚪 Logout</button></div>
+</div>
+<div class="main-content">
+<h1 class="page-title">📋 Agent Stock Balance</h1>
+<p class="page-subtitle">Track inventory with each agent</p>
+<div class="card" style="margin-top:30px;">
+<div class="card-header"><h3>Stock by Agent</h3></div>
+<div class="card-body">
+<table class="data-table" style="width:100%;">
+<thead><tr><th>Agent</th><th>Product</th><th>Received</th><th>Sold</th><th>Remaining</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Sarah Mensah</td><td>Brazilian 18"</td><td>10</td><td>4</td><td><strong>6</strong></td><td>GHS 2,400</td></tr>
+<tr><td>Sarah Mensah</td><td>Peruvian 20"</td><td>5</td><td>2</td><td><strong>3</strong></td><td>GHS 1,500</td></tr>
+<tr><td>Kwame Osei</td><td>Brazilian 18"</td><td>8</td><td>3</td><td><strong>5</strong></td><td>GHS 2,000</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<script>
+if(sessionStorage.getItem('userRole')!=='ceo')window.location.href='index.html';
+window.logout=()=>{if(confirm('Logout?')){sessionStorage.clear();window.location.href='index.html';}};
+</script>
+</body>
+</html>

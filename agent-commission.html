@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Commission • Hawalina Ventures</title>
+  <style>
+    :root{
+      --primary:#6f4cff;--success:#10b981;--warn:#f59e0b;--danger:#ef4444;--info:#3b82f6;
+      --line:#ece7ff;--muted:#6b6b7a;--text:#1f1f2a;
+      --shadow:0 8px 24px rgba(25,10,70,.08);--r:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:var(--text);
+      background:radial-gradient(1100px 500px at 60% 0%,rgba(111,76,255,.12),transparent 55%),#f7f4ff;
+    }
+    a{text-decoration:none;color:inherit}
+    .app{display:flex;min-height:100vh}
+
+    /* ── Sidebar ── */
+    .sidebar{width:250px;padding:20px 16px;background:linear-gradient(180deg,#1a0a3c,#120730);color:#fff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;flex-shrink:0}
+    .brand{display:flex;gap:10px;align-items:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:12px}
+    .brandIcon{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:18px;flex-shrink:0}
+    .brand h2{font-size:15px;margin:0;line-height:1.2}
+    .brand p{margin:2px 0 0;color:rgba(255,255,255,.55);font-size:11px}
+    .nav{display:flex;flex-direction:column;gap:3px;flex:1}
+    .nav a{padding:9px 11px;border-radius:11px;color:rgba(255,255,255,.75);display:flex;gap:9px;align-items:center;font-size:13px;transition:background .15s}
+    .nav a:hover,.nav a.active{background:rgba(255,255,255,.12);color:#fff}
+    .navIco{width:17px;height:17px;border-radius:5px;display:inline-grid;place-items:center;background:rgba(255,255,255,.1);font-size:10px;flex-shrink:0}
+    .sideFooter{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)}
+    .agentMeta{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+    .agentAvatar{width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:16px;flex-shrink:0}
+    .agentName{font-weight:700;font-size:13px;margin:0;color:#fff}
+    .agentId{color:rgba(255,255,255,.5);font-size:11px;margin:2px 0 0}
+    .logoutBtn{width:100%;padding:9px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:transparent;color:rgba(255,255,255,.65);cursor:pointer;font-size:12px;display:flex;gap:8px;align-items:center;justify-content:center}
+    .logoutBtn:hover{background:rgba(220,50,50,.2);color:#fff}
+
+    /* ── Main ── */
+    .main{flex:1;padding:28px 28px 60px;min-width:0}
+    @media(max-width:640px){.sidebar{display:none}.main{padding:16px 14px 40px}}
+
+    .topBar{margin-bottom:22px}
+    .topBar h1{margin:0 0 4px;font-size:26px}
+    .topBar p{margin:0;color:var(--muted);font-size:14px}
+
+    /* ── KPIs ── */
+    .kpis{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:13px;margin-bottom:20px}
+    @media(max-width:1050px){.kpis{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:560px){.kpis{grid-template-columns:1fr}}
+    .kpiCard{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:var(--r);padding:15px 15px 17px;box-shadow:var(--shadow);position:relative;overflow:hidden;display:flex;gap:11px;align-items:flex-start}
+    .kpiCard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+    .kpiCard.c-primary::before{background:linear-gradient(180deg,#6f4cff,#a78bfa)}
+    .kpiCard.c-success::before{background:linear-gradient(180deg,#34d399,#10b981)}
+    .kpiCard.c-warn::before{background:linear-gradient(180deg,#fbbf24,#f59e0b)}
+    .kpiCard.c-info::before{background:linear-gradient(180deg,#60a5fa,#3b82f6)}
+    .kpiIco{width:44px;height:44px;border-radius:13px;background:rgba(111,76,255,.09);border:1px solid rgba(111,76,255,.16);display:grid;place-items:center;font-size:20px;flex-shrink:0}
+    .kpiLabel{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#3c3c52;font-weight:800;margin:0 0 5px}
+    .kpiVal{font-size:21px;font-weight:900;margin:0 0 3px;color:var(--text)}
+    .kpiHint{font-size:12px;color:var(--muted);margin:0}
+
+    /* ── Layout grid ── */
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+
+    /* ── Panel ── */
+    .panel{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
+    .panelHead{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+    .panelHead h3{margin:0;font-size:15px}
+    .panelHead .sub{font-size:12px;color:var(--muted)}
+    .panelBody{padding:16px 18px}
+
+    /* ── Commission breakdown ── */
+    .breakdownRow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+    .breakdownRow:last-child{border-bottom:none}
+    .breakdownLabel{font-size:13px;color:var(--muted);font-weight:600}
+    .breakdownVal{font-size:15px;font-weight:900}
+
+    /* ── Tree ── */
+    .treeRoot{display:flex;gap:10px;align-items:flex-start;padding:12px;background:rgba(111,76,255,.05);border:1px solid rgba(111,76,255,.15);border-radius:12px;margin-bottom:14px}
+    .treeNodeIco{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#6f4cff,#a78bfa);display:grid;place-items:center;font-size:18px;flex-shrink:0;color:#fff}
+    .treeNodeInfo strong{font-size:14px;display:block;margin:0 0 2px}
+    .treeNodeInfo small{font-size:12px;color:var(--muted)}
+    .treeStat{font-size:12px;color:var(--success);font-weight:700;margin-top:3px}
+
+    .treeLevel{padding-left:24px;border-left:2px solid var(--line);margin-left:19px}
+    .treeItem{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;margin-bottom:8px;position:relative}
+    .treeItem::before{content:"";position:absolute;left:-26px;top:20px;width:26px;height:2px;background:var(--line)}
+    .treeItemIco{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:14px;flex-shrink:0}
+    .treeItemIco.l1{background:rgba(16,185,129,.1);color:var(--success)}
+    .treeItemIco.l2{background:rgba(59,130,246,.1);color:var(--info)}
+    .treeItemInfo strong{font-size:13px;display:block;margin:0 0 1px}
+    .treeItemInfo small{font-size:11px;color:var(--muted)}
+    .treeItemStat{margin-left:auto;text-align:right;flex-shrink:0}
+    .treeItemStat .val{font-size:13px;font-weight:800;color:var(--success)}
+    .treeItemStat .lbl{font-size:10px;color:var(--muted)}
+
+    .l2Container{padding-left:24px;border-left:2px solid rgba(59,130,246,.2);margin-left:17px;margin-top:4px;margin-bottom:4px}
+    .l2Container .treeItem{border-color:rgba(59,130,246,.15);background:rgba(59,130,246,.02)}
+    .l2Container .treeItem::before{background:rgba(59,130,246,.2)}
+
+    /* ── Table ── */
+    .tableWrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead tr{background:rgba(111,76,255,.04)}
+    th{padding:10px 14px;text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#3c3c52;border-bottom:1px solid var(--line);white-space:nowrap}
+    td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+    tbody tr:last-child td{border-bottom:none}
+    tbody tr:hover{background:rgba(111,76,255,.02)}
+    .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+    .badge.l1{background:rgba(16,185,129,.1);color:var(--success)}
+    .badge.l2{background:rgba(59,130,246,.1);color:var(--info)}
+    .badge.sale{background:rgba(111,76,255,.1);color:var(--primary)}
+    .commVal{color:var(--success);font-weight:800}
+
+    /* ── Tabs ── */
+    .tabs{display:flex;gap:4px;padding:12px 18px;border-bottom:1px solid var(--line);background:rgba(111,76,255,.02)}
+    .tab{padding:7px 14px;border-radius:10px;border:1px solid transparent;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted);background:transparent}
+    .tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .tab:hover:not(.active){border-color:var(--line);color:var(--text)}
+    .tabPane{display:none}
+    .tabPane.active{display:block}
+
+    /* ── My rates pill ── */
+    .ratesPill{display:inline-flex;gap:10px;background:rgba(111,76,255,.06);border:1px solid rgba(111,76,255,.15);border-radius:12px;padding:8px 14px;font-size:13px;font-weight:700;color:var(--primary);margin-bottom:14px}
+    .ratesPill span{color:var(--muted);font-weight:500}
+
+    .empty{color:var(--muted);font-size:13px;text-align:center;padding:30px 0}
+    .spinner{color:var(--muted);font-size:13px;text-align:center;padding:30px 0}
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brandIcon">✦</div>
+      <div><h2>Hawalina Ventures</h2><p>Agent Portal</p></div>
+    </div>
+    <nav class="nav">
+      <a href="agent-dashboard.html"><span class="navIco">🧩</span>Dashboard</a>
+      <a href="agent-record-sale.html"><span class="navIco">💰</span>Record Sale</a>
+      <a href="agent-sales.html"><span class="navIco">📋</span>My Sales</a>
+      <a href="agent-stock.html"><span class="navIco">📦</span>My Stock</a>
+      <a class="active" href="agent-commission.html"><span class="navIco">💵</span>My Commission</a>
+      <a href="agent-performance.html"><span class="navIco">📈</span>Performance</a>
+    </nav>
+    <div class="sideFooter">
+      <div class="agentMeta">
+        <div class="agentAvatar">👤</div>
+        <div>
+          <p class="agentName" id="sidebarName">Loading...</p>
+          <p class="agentId"   id="sidebarId">—</p>
+        </div>
+      </div>
+      <button class="logoutBtn" id="logoutBtn">🚪 &nbsp;Logout</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topBar">
+      <h1>💵 My Commission</h1>
+      <p>Sales commission + referral earnings from your network</p>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpis">
+      <div class="kpiCard c-primary">
+        <div class="kpiIco">💰</div>
+        <div>
+          <p class="kpiLabel">Total Earned</p>
+          <p class="kpiVal" id="kpiTotal">GHS —</p>
+          <p class="kpiHint">Sales + referrals</p>
+        </div>
+      </div>
+      <div class="kpiCard c-success">
+        <div class="kpiIco">🛍️</div>
+        <div>
+          <p class="kpiLabel">Sales Commission</p>
+          <p class="kpiVal" id="kpiSales">GHS —</p>
+          <p class="kpiHint">From your own sales</p>
+        </div>
+      </div>
+      <div class="kpiCard c-warn">
+        <div class="kpiIco">🔗</div>
+        <div>
+          <p class="kpiLabel">Referral Earnings</p>
+          <p class="kpiVal" id="kpiReferral">GHS —</p>
+          <p class="kpiHint" id="kpiReferralHint">From your network</p>
+        </div>
+      </div>
+      <div class="kpiCard c-info">
+        <div class="kpiIco">👥</div>
+        <div>
+          <p class="kpiLabel">Network Size</p>
+          <p class="kpiVal" id="kpiNetwork">—</p>
+          <p class="kpiHint" id="kpiNetworkHint">Agents in your tree</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Breakdown + Tree side by side -->
+    <div class="grid2">
+
+      <!-- Commission breakdown -->
+      <div class="panel">
+        <div class="panelHead"><h3>💡 Earnings Breakdown</h3></div>
+        <div class="panelBody">
+          <div class="breakdownRow">
+            <span class="breakdownLabel">From your own sales</span>
+            <span class="breakdownVal" style="color:var(--primary)" id="bdSales">GHS —</span>
+          </div>
+          <div class="breakdownRow">
+            <span class="breakdownLabel">Level 1 referral earnings</span>
+            <span class="breakdownVal" style="color:var(--success)" id="bdL1">GHS —</span>
+          </div>
+          <div class="breakdownRow">
+            <span class="breakdownLabel">Level 2 referral earnings</span>
+            <span class="breakdownVal" style="color:var(--info)" id="bdL2">GHS —</span>
+          </div>
+          <div class="breakdownRow" style="border-top:2px solid var(--line);margin-top:4px">
+            <span class="breakdownLabel" style="color:var(--text);font-weight:800">Total Earned</span>
+            <span class="breakdownVal" style="font-size:18px;color:var(--primary)" id="bdTotal">GHS —</span>
+          </div>
+
+          <!-- My referral rates -->
+          <div style="margin-top:16px">
+            <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:800;color:var(--muted);margin:0 0 8px">Your payout rates to your recruiter</p>
+            <div class="ratesPill">
+              <span>L1: <strong id="rateL1">—%</strong></span>
+              <span style="color:var(--line)">|</span>
+              <span>L2: <strong id="rateL2">—%</strong></span>
+            </div>
+            <p style="font-size:11px;color:var(--muted);margin:4px 0 0">These % of your sales go to whoever recruited you.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Referral tree -->
+      <div class="panel">
+        <div class="panelHead">
+          <h3>🌳 Your Referral Network</h3>
+          <span class="sub" id="treeCount">Loading…</span>
+        </div>
+        <div class="panelBody" id="treeBody">
+          <p class="spinner">Loading network…</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Transaction history -->
+    <div class="panel">
+      <div class="panelHead"><h3>📋 Commission History</h3></div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="all">All</button>
+        <button class="tab" data-tab="sales">My Sales</button>
+        <button class="tab" data-tab="referral">Referral</button>
+      </div>
+
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Source</th>
+              <th>Type</th>
+              <th>Sale Value</th>
+              <th>Rate</th>
+              <th>Earned</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <tr><td colspan="6" class="spinner">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script type="module">
+  import { requireRole, logout, onAuthChange } from './auth.js';
+  import {
+    getAllAgents, getSales,
+    getReferralTree, getReferralCommissions
+  } from './firestore-db.js';
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let agentData     = null;
+  let allRows       = [];   // combined sales + referral commission rows for history
+  let activeTab     = 'all';
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  async function init() {
+    const allowed = await requireRole('agent');
+    if (!allowed) return;
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      if (confirm('Are you sure you want to logout?')) {
+        await logout();
+        window.location.href = 'index.html';
+      }
+    });
+
+    onAuthChange(async (user) => {
+      if (!user) return;
+
+      const allRes = await getAllAgents();
+      if (!allRes.success) return;
+
+      // Retry up to 3 times with backoff — Firestore can be slow on first load
+      let allAgentsData = allRes.data;
+      let match = allAgentsData.find(a => a.firebaseUid === user.uid);
+      if (!match) {
+        for (let attempt = 2; attempt <= 3; attempt++) {
+          await new Promise(r => setTimeout(r, attempt * 800));
+          const retryRes = await getAllAgents();
+          if (retryRes.success && retryRes.data.length > 0) {
+            match = retryRes.data.find(a => a.firebaseUid === user.uid);
+            if (match) break;
+          }
+        }
+      }
+      if (!match) {
+        document.getElementById('sidebarName').textContent = 'Profile error';
+        document.getElementById('sidebarId').textContent   = 'Contact admin';
+        console.warn('Agent profile not found for uid:', user.uid);
+        return;
+      }
+
+      agentData = match;
+      document.getElementById('sidebarName').textContent = match.fullName || match.name || 'Agent';
+      document.getElementById('sidebarId').textContent   = match.nationalId || '—';
+
+      await loadAll(match.id);
+    });
+
+    // Tabs
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTab = btn.dataset.tab;
+        renderHistory();
+      });
+    });
+  }
+
+  // ── Load everything in parallel ───────────────────────────────────────────
+  async function loadAll(agentId) {
+    const [salesRes, refCommRes, treeRes] = await Promise.all([
+      getSales(agentId),
+      getReferralCommissions(agentId),
+      getReferralTree(agentId),
+    ]);
+
+    const sales       = salesRes.success    ? salesRes.data    : [];
+    const refComms    = refCommRes.success  ? refCommRes.data  : [];
+    const tree        = treeRes.success     ? treeRes.data     : { level1: [], level2: [] };
+
+    // Rates
+    document.getElementById('rateL1').textContent = (agentData.level1CommissionRate ?? 5) + '%';
+    document.getElementById('rateL2').textContent = (agentData.level2CommissionRate ?? 2) + '%';
+
+    renderKPIs(sales, refComms, tree);
+    renderTree(tree);
+    buildHistory(sales, refComms);
+  }
+
+  // ── KPIs ──────────────────────────────────────────────────────────────────
+  function renderKPIs(sales, refComms, tree) {
+    const salesComm  = sales.reduce((s, d) => s + (d.agentCommission || 0), 0);
+    const refTotal   = refComms.reduce((s, d) => s + (d.commissionAmount || 0), 0);
+    const l1Total    = refComms.filter(d => d.level === 1).reduce((s, d) => s + (d.commissionAmount || 0), 0);
+    const l2Total    = refComms.filter(d => d.level === 2).reduce((s, d) => s + (d.commissionAmount || 0), 0);
+    const total      = salesComm + refTotal;
+    const networkSz  = tree.level1.length + tree.level2.length;
+
+    document.getElementById('kpiTotal').textContent    = 'GHS ' + fmt(total);
+    document.getElementById('kpiSales').textContent    = 'GHS ' + fmt(salesComm);
+    document.getElementById('kpiReferral').textContent = 'GHS ' + fmt(refTotal);
+    document.getElementById('kpiReferralHint').textContent = `L1: GHS ${fmt(l1Total)} · L2: GHS ${fmt(l2Total)}`;
+    document.getElementById('kpiNetwork').textContent  = networkSz;
+    document.getElementById('kpiNetworkHint').textContent = `${tree.level1.length} direct · ${tree.level2.length} indirect`;
+
+    document.getElementById('bdSales').textContent = 'GHS ' + fmt(salesComm);
+    document.getElementById('bdL1').textContent    = 'GHS ' + fmt(l1Total);
+    document.getElementById('bdL2').textContent    = 'GHS ' + fmt(l2Total);
+    document.getElementById('bdTotal').textContent = 'GHS ' + fmt(total);
+  }
+
+  // ── Tree ──────────────────────────────────────────────────────────────────
+  function renderTree(tree) {
+    const body  = document.getElementById('treeBody');
+    const count = document.getElementById('treeCount');
+    const { level1, level2 } = tree;
+
+    count.textContent = `${level1.length + level2.length} agent${level1.length + level2.length !== 1 ? 's' : ''}`;
+
+    if (!level1.length) {
+      body.innerHTML = `
+        <div class="treeRoot">
+          <div class="treeNodeIco">👤</div>
+          <div class="treeNodeInfo">
+            <strong>${esc(agentData.fullName || agentData.name || 'You')}</strong>
+            <small>Your referral network is empty</small>
+            <div class="treeStat">Contact admin to get recruits assigned</div>
+          </div>
+        </div>`;
+      return;
+    }
+
+    // Build level2 lookup: throughAgentId → [agents]
+    const l2Map = {};
+    level2.forEach(r => {
+      if (!l2Map[r.throughAgentId]) l2Map[r.throughAgentId] = [];
+      l2Map[r.throughAgentId].push(r);
+    });
+
+    let html = `
+      <div class="treeRoot">
+        <div class="treeNodeIco">👤</div>
+        <div class="treeNodeInfo">
+          <strong>${esc(agentData.fullName || agentData.name || 'You')}</strong>
+          <small>${level1.length} direct recruit${level1.length !== 1 ? 's' : ''}</small>
+        </div>
+      </div>
+      <div class="treeLevel">`;
+
+    level1.forEach(r1 => {
+      const l2 = l2Map[r1.recruitedAgentId] || [];
+      html += `
+        <div class="treeItem">
+          <div class="treeItemIco l1">👥</div>
+          <div class="treeItemInfo">
+            <strong>${esc(r1.recruitedName || '—')}</strong>
+            <small>Level 1 · Direct recruit</small>
+          </div>
+          <div class="treeItemStat">
+            <div class="val">5%</div>
+            <div class="lbl">rate</div>
+          </div>
+        </div>
+        ${l2.length ? `<div class="l2Container">${l2.map(r2 => `
+          <div class="treeItem">
+            <div class="treeItemIco l2">🔗</div>
+            <div class="treeItemInfo">
+              <strong>${esc(r2.recruitedName || '—')}</strong>
+              <small>Level 2 · via ${esc(r1.recruitedName || '—')}</small>
+            </div>
+            <div class="treeItemStat">
+              <div class="val">2%</div>
+              <div class="lbl">rate</div>
+            </div>
+          </div>`).join('')}</div>` : ''}`;
+    });
+
+    html += '</div>';
+    body.innerHTML = html;
+  }
+
+  // ── History ───────────────────────────────────────────────────────────────
+  function buildHistory(sales, refComms) {
+    // Combine into unified rows
+    const salesRows = sales.map(s => ({
+      type:    'sale',
+      date:    toDate(s.saleDate),
+      source:  s.customerName || s.customer || '—',
+      product: [s.hairBrand || s.brand, s.color, s.length ? `${s.length}"` : ''].filter(Boolean).join(' '),
+      level:   null,
+      saleAmt: s.totalSellingPrice || 0,
+      rate:    null,
+      earned:  s.agentCommission || 0,
+    }));
+
+    const refRows = refComms.map(r => ({
+      type:    'referral',
+      date:    toDate(r.createdAt),
+      source:  r.sourceAgentName || '—',
+      product: '—',
+      level:   r.level,
+      saleAmt: r.saleAmount || 0,
+      rate:    r.commissionRate || 0,
+      earned:  r.commissionAmount || 0,
+    }));
+
+    allRows = [...salesRows, ...refRows].sort((a, b) => (b.date || 0) - (a.date || 0));
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const body = document.getElementById('historyBody');
+    const rows = allRows.filter(r => {
+      if (activeTab === 'sales')    return r.type === 'sale';
+      if (activeTab === 'referral') return r.type === 'referral';
+      return true;
+    });
+
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="6" class="empty">No records found.</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(r => {
+      const dateStr = r.date ? r.date.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+      const typeBadge = r.type === 'sale'
+        ? `<span class="badge sale">My Sale</span>`
+        : `<span class="badge ${r.level === 1 ? 'l1' : 'l2'}">L${r.level} Referral</span>`;
+      const rateStr = r.rate != null ? `${r.rate}%` : `—`;
+
+      return `<tr>
+        <td style="color:var(--muted);white-space:nowrap">${dateStr}</td>
+        <td><strong>${esc(r.source)}</strong></td>
+        <td>${typeBadge}</td>
+        <td>GHS ${fmt(r.saleAmt)}</td>
+        <td style="color:var(--muted)">${rateStr}</td>
+        <td><strong class="commVal">+GHS ${fmt(r.earned)}</strong></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function toDate(val) {
+    if (!val) return null;
+    if (val.toDate)  return val.toDate();
+    if (val.seconds) return new Date(val.seconds * 1000);
+    return new Date(val);
+  }
+  function fmt(n) {
+    return Number(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function esc(str) {
+    return String(str ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+  }
+
+  init();
+</script>
+</body>
+</html>

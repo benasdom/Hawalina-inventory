@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Referrals • Hawalina Ventures</title>
+  <style>
+    :root{
+      --bg:#f7f4ff;--text:#1f1f2a;--muted:#6b6b7a;--primary:#6f4cff;
+      --line:#ece7ff;--shadow:0 10px 25px rgba(25,10,70,.08);--r:18px;
+      --success:#10b981;--warn:#f59e0b;--info:#3b82f6;--danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 70% 0%,rgba(111,76,255,.22),transparent 55%),
+        radial-gradient(900px 500px at 0% 30%,rgba(139,107,255,.14),transparent 60%),
+        var(--bg);
+    }
+    a{color:inherit;text-decoration:none}
+    .app{display:flex;min-height:100vh}
+
+    /* ── Sidebar ── */
+    .sidebar{width:260px;padding:22px 18px;background:linear-gradient(180deg,#24134f,#1a1036);color:#fff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;}
+    .brand{display:flex;gap:12px;align-items:center;padding:10px 10px 18px}
+    .logo{width:46px;height:46px;border-radius:16px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:18px}
+    .brand h1{font-size:18px;margin:0;line-height:1.1}
+    .brand p{margin:4px 0 0;color:rgba(255,255,255,.7);font-size:12px}
+    .nav{margin-top:10px;display:flex;flex-direction:column;gap:6px;flex:1}
+    .nav a{padding:10px 12px;border-radius:12px;color:rgba(255,255,255,.86);display:flex;gap:10px;align-items:center;font-size:14px}
+    .nav a:hover,.nav a.active{background:rgba(255,255,255,.12);color:#fff}
+    .ico{width:18px;height:18px;border-radius:6px;display:inline-grid;place-items:center;background:rgba(255,255,255,.10);font-size:12px}
+    .logout-btn{margin-top:auto;padding:10px 12px;border-radius:12px;color:rgba(255,255,255,.7);display:flex;gap:10px;align-items:center;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:transparent;width:100%;font-size:14px;}
+    .logout-btn:hover{background:rgba(255,0,0,.2);color:#fff}
+
+    /* ── Main ── */
+    .main{flex:1;padding:26px 26px 60px;min-width:0}
+    @media(max-width:620px){.sidebar{display:none}}
+    .pageTitle{margin:0 0 4px;font-size:28px}
+    .pageSub{color:var(--muted);margin:0 0 22px;font-size:14px}
+
+    /* ── KPIs ── */
+    .kpis{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+    @media(max-width:1150px){.kpis{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:620px){.kpis{grid-template-columns:1fr}}
+    .kpiCard{background:rgba(255,255,255,.88);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;display:flex;gap:12px;align-items:flex-start;}
+    .kpiCard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px}
+    .kpiCard.c-primary::before{background:linear-gradient(180deg,#6f4cff,#a78bfa)}
+    .kpiCard.c-success::before{background:linear-gradient(180deg,#34d399,#10b981)}
+    .kpiCard.c-warn::before{background:linear-gradient(180deg,#fbbf24,#f59e0b)}
+    .kpiCard.c-info::before{background:linear-gradient(180deg,#60a5fa,#3b82f6)}
+    .kpiIco{width:46px;height:46px;border-radius:14px;background:rgba(111,76,255,.10);border:1px solid rgba(111,76,255,.18);display:grid;place-items:center;font-size:22px;flex-shrink:0}
+    .kpiLabel{font-size:11px;letter-spacing:.05em;color:#3c3c52;text-transform:uppercase;margin:2px 0 6px;font-weight:800}
+    .kpiVal{font-size:24px;font-weight:900;margin:0}
+    .kpiHint{margin:4px 0 0;color:var(--muted);font-size:12px}
+
+    /* ── Tabs ── */
+    .tabs{display:flex;gap:4px;margin-bottom:18px;background:rgba(255,255,255,.6);border:1px solid var(--line);border-radius:14px;padding:5px;width:fit-content}
+    .tabBtn{padding:8px 16px;border-radius:10px;border:none;background:transparent;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted);transition:all .15s}
+    .tabBtn.active{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(111,76,255,.3)}
+
+    /* ── Panel ── */
+    .panel{background:rgba(255,255,255,.88);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
+    .panelHead{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:10px}
+    .panelHead h3{margin:0;font-size:15px}
+    .panelBody{padding:18px}
+
+    /* ── Filters bar ── */
+    .filterBar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line);background:rgba(111,76,255,.02)}
+    .searchWrap{position:relative;flex:1;min-width:200px}
+    .searchWrap input{width:100%;padding:9px 12px 9px 34px;border:2px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none}
+    .searchWrap input:focus{border-color:var(--primary)}
+    .searchIco{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--muted)}
+    select.filter{padding:9px 12px;border:2px solid #e5e7eb;border-radius:10px;font-size:13px;outline:none;background:#fff}
+    select.filter:focus{border-color:var(--primary)}
+    .btnExport{padding:9px 14px;border-radius:10px;border:none;background:rgba(111,76,255,.1);color:var(--primary);font-size:12px;font-weight:700;cursor:pointer}
+    .btnExport:hover{background:rgba(111,76,255,.18)}
+
+    /* ── Table ── */
+    .tableWrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead tr{background:rgba(111,76,255,.04)}
+    th{padding:11px 14px;text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#3c3c52;border-bottom:1px solid var(--line);white-space:nowrap}
+    td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+    tbody tr:last-child td{border-bottom:none}
+    tbody tr:hover{background:rgba(111,76,255,.02)}
+    .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+    .badge.l1{background:rgba(16,185,129,.1);color:var(--success)}
+    .badge.l2{background:rgba(59,130,246,.1);color:var(--info)}
+    .badge.active{background:rgba(16,185,129,.1);color:var(--success)}
+    .commVal{color:var(--success);font-weight:800}
+
+    /* ── Assign form ── */
+    .formGrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:700px){.formGrid{grid-template-columns:1fr}}
+    .formFull{grid-column:1/-1}
+    label{font-weight:700;font-size:13px;display:block;margin-bottom:7px}
+    label span{color:var(--danger)}
+    input[type=text],input[type=tel],input[type=number],select.fld{
+      width:100%;padding:11px 13px;border:2px solid #e5e7eb;border-radius:10px;
+      font-size:14px;font-family:inherit;outline:none;background:#fff;
+    }
+    input:focus,select.fld:focus{border-color:var(--primary)}
+    small.hint{display:block;margin-top:5px;font-size:12px;color:var(--muted)}
+    .btnPrimary{padding:12px 22px;background:linear-gradient(135deg,#6f4cff,#8b6bff);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(111,76,255,.3)}
+    .btnPrimary:hover{opacity:.9}
+    .btnPrimary:disabled{opacity:.5;cursor:not-allowed}
+    .btnSecondary{padding:12px 18px;background:rgba(111,76,255,.08);color:var(--primary);border:1px solid rgba(111,76,255,.2);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer}
+
+    /* ── Tree ── */
+    .treeRoot{display:flex;gap:12px;align-items:flex-start;padding:14px;background:rgba(111,76,255,.05);border:1px solid rgba(111,76,255,.15);border-radius:14px;margin-bottom:14px}
+    .treeNodeIco{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#6f4cff,#a78bfa);display:grid;place-items:center;font-size:18px;flex-shrink:0;color:#fff}
+    .treeNodeInfo strong{font-size:14px;display:block;margin:0 0 2px}
+    .treeNodeInfo small{font-size:12px;color:var(--muted)}
+    .treeStat{font-size:12px;color:var(--success);font-weight:700;margin-top:3px}
+    .treeLevel{padding-left:26px;border-left:2px solid var(--line);margin-left:21px}
+    .treeItem{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;margin-bottom:8px;position:relative}
+    .treeItem::before{content:"";position:absolute;left:-28px;top:20px;width:28px;height:2px;background:var(--line)}
+    .treeItemIco{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:14px;flex-shrink:0}
+    .treeItemIco.l1{background:rgba(16,185,129,.1);color:var(--success)}
+    .treeItemIco.l2{background:rgba(59,130,246,.1);color:var(--info)}
+    .treeItemInfo{flex:1}
+    .treeItemInfo strong{font-size:13px;display:block;margin:0 0 2px}
+    .treeItemInfo small{font-size:11px;color:var(--muted)}
+    .treeItemStat{text-align:right;flex-shrink:0}
+    .treeItemStat .val{font-size:13px;font-weight:800;color:var(--success)}
+    .treeItemStat .lbl{font-size:10px;color:var(--muted)}
+    .l2Container{padding-left:24px;border-left:2px solid rgba(59,130,246,.2);margin-left:17px;margin-top:4px;margin-bottom:4px}
+    .l2Container .treeItem{border-color:rgba(59,130,246,.15);background:rgba(59,130,246,.02)}
+    .l2Container .treeItem::before{background:rgba(59,130,246,.2)}
+
+    /* ── Alert ── */
+    .alert{padding:12px 16px;border-radius:10px;font-size:13px;font-weight:600;margin-top:14px}
+    .alertSuccess{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#065f46}
+    .alertError{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#991b1b}
+
+    /* ── Top performers ── */
+    .perfRow{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+    .perfRow:last-child{border-bottom:none}
+    .perfPos{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-size:12px;font-weight:800;flex-shrink:0}
+    .perfPos.p1{background:#fef3c7;color:#d97706}
+    .perfPos.p2{background:#f1f5f9;color:#64748b}
+    .perfPos.p3{background:#fdf4ff;color:#9f6b9b}
+    .perfPos.pn{background:rgba(111,76,255,.08);color:var(--muted)}
+    .perfName{font-size:13px;font-weight:700;flex:1}
+    .perfName small{color:var(--muted);font-weight:500;font-size:11px;display:block}
+    .perfVal{font-size:13px;font-weight:800;color:var(--primary)}
+
+    .empty{color:var(--muted);font-size:13px;text-align:center;padding:30px 0}
+    .spinner{color:var(--muted);font-size:13px;text-align:center;padding:30px 0}
+
+    /* ── Rates badge ── */
+    .rateTag{display:inline-block;padding:3px 9px;border-radius:8px;font-size:12px;font-weight:700;background:rgba(111,76,255,.07);border:1px solid rgba(111,76,255,.15);color:var(--primary)}
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar (CEO portal style) -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">✦</div>
+      <div><h1>Hawalina Ventures</h1><p>CEO Portal</p></div>
+    </div>
+    <nav class="nav">
+      <a href="dashboard.html"><span class="ico">🧩</span>Dashboard</a>
+      <a href="warehouse.html"><span class="ico">📦</span>Warehouse</a>
+      <a href="products.html"><span class="ico">🧴</span>Products</a>
+      <a href="agents.html"><span class="ico">🧑🏾‍💼</span>Agents</a>
+      <a href="distribute.html"><span class="ico">🚚</span>Distribute Stock</a>
+      <a href="sales.html"><span class="ico">🧾</span>All Sales</a>
+      <a href="payments.html"><span class="ico">💳</span>Payments</a>
+      <a href="stockbalance.html"><span class="ico">📊</span>Stock Balance</a>
+      <a href="analytics.html"><span class="ico">📈</span>Analytics</a>
+      <a class="active" href="referrals.html"><span class="ico">🔗</span>Referrals</a>
+    </nav>
+    <button class="logout-btn" id="logoutBtn">🚪 &nbsp;Logout</button>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <h1 class="pageTitle">🔗 Referral System</h1>
+    <p class="pageSub">Manage agent networks and track referral commissions</p>
+
+    <!-- KPIs -->
+    <div class="kpis">
+      <div class="kpiCard c-primary">
+        <div class="kpiIco">👥</div>
+        <div>
+          <p class="kpiLabel">Total Agents</p>
+          <p class="kpiVal" id="kpiAgents">—</p>
+          <p class="kpiHint" id="kpiAgentsHint">active agents</p>
+        </div>
+      </div>
+      <div class="kpiCard c-success">
+        <div class="kpiIco">🔗</div>
+        <div>
+          <p class="kpiLabel">Total Referrals</p>
+          <p class="kpiVal" id="kpiReferrals">—</p>
+          <p class="kpiHint" id="kpiRefHint">L1 + L2 relationships</p>
+        </div>
+      </div>
+      <div class="kpiCard c-warn">
+        <div class="kpiIco">💰</div>
+        <div>
+          <p class="kpiLabel">Referral Commissions</p>
+          <p class="kpiVal" id="kpiComm">GHS —</p>
+          <p class="kpiHint" id="kpiCommHint">total paid out</p>
+        </div>
+      </div>
+      <div class="kpiCard c-info">
+        <div class="kpiIco">📈</div>
+        <div>
+          <p class="kpiLabel">Top Network</p>
+          <p class="kpiVal" id="kpiTop">—</p>
+          <p class="kpiHint" id="kpiTopHint">most recruits</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tabBtn active" data-tab="overview">📊 Overview</button>
+      <button class="tabBtn" data-tab="agents">👥 All Agents</button>
+      <button class="tabBtn" data-tab="assign">➕ Assign Referral</button>
+      <button class="tabBtn" data-tab="commissions">💰 Commissions</button>
+      <button class="tabBtn" data-tab="tree">🌳 Tree View</button>
+    </div>
+
+    <!-- ── TAB: Overview ── -->
+    <div id="tab-overview" class="tabPane active">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <!-- Top performers -->
+        <div class="panel">
+          <div class="panelHead"><h3>🏆 Top Referrers</h3><span style="font-size:12px;color:var(--muted)">By referral commission earned</span></div>
+          <div class="panelBody"><div id="topPerformers"><p class="spinner">Loading…</p></div></div>
+        </div>
+        <!-- Network summary -->
+        <div class="panel">
+          <div class="panelHead"><h3>🌐 Network Summary</h3></div>
+          <div class="panelBody"><div id="networkSummary"><p class="spinner">Loading…</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: All Agents ── -->
+    <div id="tab-agents" class="tabPane" style="display:none">
+      <div class="panel">
+        <div class="panelHead"><h3>Agent Networks</h3></div>
+        <div class="filterBar">
+          <div class="searchWrap">
+            <span class="searchIco">🔍</span>
+            <input type="text" id="agentSearch" placeholder="Search name or ID…">
+          </div>
+        </div>
+        <div class="tableWrap">
+          <table>
+            <thead><tr>
+              <th>Agent</th>
+              <th>Referred By</th>
+              <th>L1 Recruits</th>
+              <th>L2 Recruits</th>
+              <th>Rates</th>
+              <th>Referral Commissions</th>
+            </tr></thead>
+            <tbody id="agentsTableBody"><tr><td colspan="6" class="spinner">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: Assign Referral ── -->
+    <div id="tab-assign" class="tabPane" style="display:none">
+      <div class="panel">
+        <div class="panelHead"><h3>Assign a Referral Relationship</h3></div>
+        <div class="panelBody">
+          <p style="font-size:13px;color:var(--muted);margin:0 0 18px">
+            Use this form to link an existing agent to a recruiter. This sets the <code>referredBy</code> field on the recruited agent and creates the referral relationship doc. Future sales by that agent will automatically generate referral commissions for the recruiter.
+          </p>
+          <form id="assignForm" style="display:flex;flex-direction:column;gap:16px">
+            <div class="formGrid">
+              <div>
+                <label>Recruiter (Referring Agent) <span>*</span></label>
+                <select class="fld" id="recruiterSelect" required>
+                  <option value="">— Select recruiter —</option>
+                </select>
+                <small class="hint">The agent who will earn referral commission</small>
+              </div>
+              <div>
+                <label>Recruited Agent <span>*</span></label>
+                <select class="fld" id="recruitedSelect" required>
+                  <option value="">— Select agent to assign —</option>
+                </select>
+                <small class="hint">The agent being added to the recruiter's network</small>
+              </div>
+              <div>
+                <label>Level 1 Commission Rate (%)</label>
+                <input type="number" id="rateL1" value="5" min="0" max="100" step="0.5">
+                <small class="hint">% of recruited agent's sales paid to recruiter (default 5%)</small>
+              </div>
+              <div>
+                <label>Level 2 Commission Rate (%)</label>
+                <input type="number" id="rateL2" value="2" min="0" max="100" step="0.5">
+                <small class="hint">% paid when recruited agent's own recruits sell (default 2%)</small>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <button type="submit" class="btnPrimary" id="assignBtn">➕ Create Referral Link</button>
+              <button type="reset" class="btnSecondary">Clear</button>
+            </div>
+            <div id="assignMsg" style="display:none"></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Update rates on existing agent -->
+      <div class="panel">
+        <div class="panelHead"><h3>✏️ Update Referral Rates</h3></div>
+        <div class="panelBody">
+          <p style="font-size:13px;color:var(--muted);margin:0 0 18px">Change the commission rates an agent pays out to their recruiter chain on future sales.</p>
+          <div class="formGrid">
+            <div>
+              <label>Agent <span>*</span></label>
+              <select class="fld" id="rateAgentSelect">
+                <option value="">— Select agent —</option>
+              </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <label>L1 Rate (%)</label>
+                <input type="number" id="newRateL1" value="5" min="0" max="100" step="0.5">
+              </div>
+              <div>
+                <label>L2 Rate (%)</label>
+                <input type="number" id="newRateL2" value="2" min="0" max="100" step="0.5">
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+            <button class="btnPrimary" id="updateRateBtn">💾 Save Rates</button>
+            <div id="rateMsg" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: Commissions ── -->
+    <div id="tab-commissions" class="tabPane" style="display:none">
+      <div class="panel">
+        <div class="panelHead"><h3>Referral Commission Ledger</h3></div>
+        <div class="filterBar">
+          <div class="searchWrap">
+            <span class="searchIco">🔍</span>
+            <input type="text" id="commSearch" placeholder="Search agent name…">
+          </div>
+          <select class="filter" id="levelFilter">
+            <option value="all">All Levels</option>
+            <option value="1">Level 1 Only</option>
+            <option value="2">Level 2 Only</option>
+          </select>
+          <button class="btnExport" id="exportBtn">📥 Export CSV</button>
+        </div>
+        <div class="tableWrap">
+          <table>
+            <thead><tr>
+              <th>Date</th>
+              <th>Beneficiary (Earner)</th>
+              <th>Source Agent</th>
+              <th>Level</th>
+              <th>Sale Value</th>
+              <th>Rate</th>
+              <th>Commission</th>
+            </tr></thead>
+            <tbody id="commTableBody"><tr><td colspan="7" class="spinner">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: Tree ── -->
+    <div id="tab-tree" class="tabPane" style="display:none">
+      <div class="panel">
+        <div class="panelHead"><h3>Referral Tree</h3></div>
+        <div class="panelBody">
+          <div style="margin-bottom:16px">
+            <label style="font-size:13px;font-weight:700;display:block;margin-bottom:7px">Select Agent</label>
+            <select class="fld" id="treeAgentSelect" style="max-width:360px">
+              <option value="">— Select agent —</option>
+            </select>
+          </div>
+          <div id="treeView"><p class="empty">Select an agent to view their referral network.</p></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast" style="position:fixed;bottom:22px;right:22px;background:#1f1f2a;color:#fff;padding:12px 18px;border-radius:13px;font-size:13px;font-weight:700;display:none;z-index:999;border-left:4px solid var(--success);box-shadow:0 8px 24px rgba(0,0,0,.2)"></div>
+
+<script type="module">
+  import { requireRole, logout, onAuthChange } from './auth.js';
+  import {
+    getAllAgents,
+    getAllReferralCommissions,
+    getReferralTree,
+    updateAgent,
+    updateAgentReferralRates,
+  } from './firestore-db.js';
+  import {
+    collection, addDoc, updateDoc, doc, serverTimestamp
+  } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+  import { db } from './firebase-config.js';
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let allAgents  = [];
+  let allComms   = [];
+  let commSearch = '';
+  let levelFilter= 'all';
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  async function init() {
+    const allowed = await requireRole('ceo');
+    if (!allowed) return;
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      if (confirm('Are you sure you want to logout?')) {
+        await logout();
+        window.location.href = 'index.html';
+      }
+    });
+
+    onAuthChange(async (user) => {
+      if (!user) return;
+      await loadAll();
+    });
+  }
+
+  // ── Load ──────────────────────────────────────────────────────────────────
+  async function loadAll() {
+    const [agentsRes, commsRes] = await Promise.all([
+      getAllAgents(),
+      getAllReferralCommissions(),
+    ]);
+
+    allAgents = agentsRes.success ? agentsRes.data.filter(a => a.isActive !== false) : [];
+    allComms  = commsRes.success  ? commsRes.data  : [];
+
+    renderKPIs();
+    renderOverview();
+    renderAgentsTable();
+    populateDropdowns();
+    renderCommTable();
+    wireControls();
+  }
+
+  // ── KPIs ──────────────────────────────────────────────────────────────────
+  function renderKPIs() {
+    // Build referral map per agent
+    const recruiterCounts = {};
+    allAgents.forEach(a => {
+      if (a.referredBy) {
+        recruiterCounts[a.referredBy] = (recruiterCounts[a.referredBy] || 0) + 1;
+      }
+    });
+
+    const totalReferrals = allAgents.filter(a => a.referredBy).length;
+    const totalComm      = allComms.reduce((s, c) => s + (c.commissionAmount || 0), 0);
+    const topEntry       = Object.entries(recruiterCounts).sort((a,b) => b[1]-a[1])[0];
+    const topAgent       = topEntry ? allAgents.find(a => a.id === topEntry[0]) : null;
+
+    document.getElementById('kpiAgents').textContent    = allAgents.length;
+    document.getElementById('kpiAgentsHint').textContent= `${allAgents.length} active`;
+    document.getElementById('kpiReferrals').textContent = totalReferrals;
+    document.getElementById('kpiRefHint').textContent   = `${allAgents.filter(a=>a.referredBy).length} linked agents`;
+    document.getElementById('kpiComm').textContent      = 'GHS ' + fmt(totalComm);
+    document.getElementById('kpiCommHint').textContent  = `across ${allComms.length} transactions`;
+    document.getElementById('kpiTop').textContent       = topAgent ? (topAgent.fullName || topAgent.name || '—') : '—';
+    document.getElementById('kpiTopHint').textContent   = topEntry ? `${topEntry[1]} direct recruit${topEntry[1]!==1?'s':''}` : 'No recruits yet';
+  }
+
+  // ── Overview ──────────────────────────────────────────────────────────────
+  function renderOverview() {
+    // Top referrers by commission earned
+    const earnMap = {};
+    allComms.forEach(c => {
+      if (!earnMap[c.beneficiaryAgentId]) earnMap[c.beneficiaryAgentId] = { name: c.beneficiaryAgentName, total: 0, count: 0 };
+      earnMap[c.beneficiaryAgentId].total += (c.commissionAmount || 0);
+      earnMap[c.beneficiaryAgentId].count++;
+    });
+    const sorted = Object.entries(earnMap).sort((a,b) => b[1].total - a[1].total).slice(0, 6);
+    const perfEl = document.getElementById('topPerformers');
+    if (!sorted.length) {
+      perfEl.innerHTML = '<p class="empty">No referral commissions yet.</p>';
+    } else {
+      perfEl.innerHTML = sorted.map(([id, info], i) => {
+        const pos = i + 1;
+        const cls = pos===1?'p1':pos===2?'p2':pos===3?'p3':'pn';
+        return `<div class="perfRow">
+          <div class="perfPos ${cls}">${pos}</div>
+          <div class="perfName">${esc(info.name || '—')}<small>${info.count} commission${info.count!==1?'s':''}</small></div>
+          <div class="perfVal">GHS ${fmt(info.total)}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // Network summary
+    const withNetwork = allAgents.filter(a => {
+      const recruits = allAgents.filter(b => b.referredBy === a.id).length;
+      return recruits > 0;
+    });
+    const noNetwork  = allAgents.filter(a => !a.referredBy && allAgents.filter(b => b.referredBy === a.id).length === 0);
+    const referenced = allAgents.filter(a => a.referredBy);
+
+    const netEl = document.getElementById('networkSummary');
+    netEl.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${[
+          ['Agents with active recruits', withNetwork.length, 'var(--success)'],
+          ['Agents in a referral chain',  referenced.length,  'var(--primary)'],
+          ['Agents with no network',      noNetwork.length,   'var(--muted)'],
+          ['Total commission transactions', allComms.length,  'var(--warn)'],
+        ].map(([label, val, color]) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)">
+            <span style="font-size:13px;color:var(--muted);font-weight:600">${label}</span>
+            <span style="font-size:16px;font-weight:900;color:${color}">${val}</span>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  // ── Agents table ──────────────────────────────────────────────────────────
+  function renderAgentsTable() {
+    const body  = document.getElementById('agentsTableBody');
+    const term  = document.getElementById('agentSearch')?.value.toLowerCase() || '';
+
+    const rows = allAgents.filter(a => {
+      if (!term) return true;
+      return (a.fullName||a.name||'').toLowerCase().includes(term) || (a.nationalId||'').toLowerCase().includes(term);
+    });
+
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="6" class="empty">No agents found.</td></tr>`;
+      return;
+    }
+
+    // Build recruit counts
+    const l1Map = {};
+    allAgents.forEach(a => {
+      if (a.referredBy) l1Map[a.referredBy] = (l1Map[a.referredBy] || 0) + 1;
+    });
+
+    // Level 2: agents whose referredBy's referredBy = this agent
+    const l2Map = {};
+    allAgents.forEach(a => {
+      if (!a.referredBy) return;
+      const parent = allAgents.find(b => b.id === a.referredBy);
+      if (parent?.referredBy) {
+        l2Map[parent.referredBy] = (l2Map[parent.referredBy] || 0) + 1;
+      }
+    });
+
+    // Commission totals per beneficiary
+    const commMap = {};
+    allComms.forEach(c => {
+      commMap[c.beneficiaryAgentId] = (commMap[c.beneficiaryAgentId] || 0) + (c.commissionAmount || 0);
+    });
+
+    body.innerHTML = rows.map(a => {
+      const parent  = a.referredBy ? allAgents.find(b => b.id === a.referredBy) : null;
+      const l1      = l1Map[a.id] || 0;
+      const l2      = l2Map[a.id] || 0;
+      const earned  = commMap[a.id] || 0;
+      return `<tr>
+        <td><strong>${esc(a.fullName||a.name||'—')}</strong><br><small style="color:var(--muted)">${esc(a.nationalId||a.id)}</small></td>
+        <td>${parent ? esc(parent.fullName||parent.name||'—') : '<span style="color:var(--muted);font-size:12px">Direct / CEO</span>'}</td>
+        <td style="text-align:center"><strong>${l1}</strong></td>
+        <td style="text-align:center"><strong>${l2}</strong></td>
+        <td>
+          <span class="rateTag">L1: ${a.level1CommissionRate??5}%</span>
+          <span class="rateTag" style="margin-left:4px">L2: ${a.level2CommissionRate??2}%</span>
+        </td>
+        <td><strong class="commVal">GHS ${fmt(earned)}</strong></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Populate all dropdowns ─────────────────────────────────────────────────
+  function populateDropdowns() {
+    const selects = ['recruiterSelect','recruitedSelect','rateAgentSelect','treeAgentSelect'];
+    selects.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const current = el.value;
+      el.innerHTML = `<option value="">— Select agent —</option>` +
+        allAgents.map(a => `<option value="${a.id}">${esc(a.fullName||a.name||'—')} (${esc(a.nationalId||a.id)})</option>`).join('');
+      el.value = current;
+    });
+  }
+
+  // ── Commissions table ─────────────────────────────────────────────────────
+  function renderCommTable() {
+    const body = document.getElementById('commTableBody');
+    const rows = allComms.filter(c => {
+      if (levelFilter !== 'all' && String(c.level) !== levelFilter) return false;
+      if (commSearch) {
+        const q = commSearch.toLowerCase();
+        if (!(c.beneficiaryAgentName||'').toLowerCase().includes(q) &&
+            !(c.sourceAgentName||'').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="7" class="empty">No commissions match your filters.</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(c => {
+      const d      = toDate(c.createdAt);
+      const ds     = d ? d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+      const lvlCls = c.level === 1 ? 'l1' : 'l2';
+      return `<tr>
+        <td style="color:var(--muted);white-space:nowrap">${ds}</td>
+        <td><strong>${esc(c.beneficiaryAgentName||'—')}</strong></td>
+        <td>${esc(c.sourceAgentName||'—')}</td>
+        <td><span class="badge ${lvlCls}">Level ${c.level}</span></td>
+        <td>GHS ${fmt(c.saleAmount)}</td>
+        <td style="color:var(--muted)">${c.commissionRate||0}%</td>
+        <td><strong class="commVal">+GHS ${fmt(c.commissionAmount)}</strong></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Assign referral ───────────────────────────────────────────────────────
+  document.getElementById('assignForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const recruiterId = document.getElementById('recruiterSelect').value;
+    const recruitedId = document.getElementById('recruitedSelect').value;
+    const l1Rate      = parseFloat(document.getElementById('rateL1').value) || 5;
+    const l2Rate      = parseFloat(document.getElementById('rateL2').value) || 2;
+    const msgEl       = document.getElementById('assignMsg');
+
+    if (!recruiterId || !recruitedId) { showMsg(msgEl,'Please select both agents.','err'); return; }
+    if (recruiterId === recruitedId)  { showMsg(msgEl,'An agent cannot refer themselves.','err'); return; }
+
+    const recruited = allAgents.find(a => a.id === recruitedId);
+    if (recruited?.referredBy) {
+      showMsg(msgEl,'This agent already has a recruiter assigned. Update their rates instead.','err');
+      return;
+    }
+
+    const recruiter = allAgents.find(a => a.id === recruiterId);
+    const btn = document.getElementById('assignBtn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    try {
+      // Update recruited agent's referredBy + rates
+      await updateDoc(doc(db, 'agents', recruitedId), {
+        referredBy:           recruiterId,
+        referredByName:       recruiter?.fullName || recruiter?.name || '',
+        level1CommissionRate: l1Rate,
+        level2CommissionRate: l2Rate,
+      });
+
+      // Create referral relationship doc
+      await addDoc(collection(db, 'referrals'), {
+        recruiterAgentId: recruiterId,
+        recruitedAgentId: recruitedId,
+        recruiterName:    recruiter?.fullName || recruiter?.name || '',
+        recruitedName:    recruited?.fullName || recruited?.name || '',
+        dateCreated:      serverTimestamp(),
+        isActive:         true,
+      });
+
+      showMsg(msgEl, `✅ ${recruited?.fullName||recruited?.name} is now linked to ${recruiter?.fullName||recruiter?.name}`, 'ok');
+      showToast('Referral link created successfully');
+      await loadAll();
+      document.getElementById('assignForm').reset();
+    } catch (err) {
+      showMsg(msgEl, 'Error: ' + err.message, 'err');
+    } finally {
+      btn.disabled = false; btn.textContent = '➕ Create Referral Link';
+    }
+  });
+
+  // ── Update rates ──────────────────────────────────────────────────────────
+  document.getElementById('updateRateBtn').addEventListener('click', async () => {
+    const agentId = document.getElementById('rateAgentSelect').value;
+    const l1      = parseFloat(document.getElementById('newRateL1').value) || 5;
+    const l2      = parseFloat(document.getElementById('newRateL2').value) || 2;
+    const msgEl   = document.getElementById('rateMsg');
+
+    if (!agentId) { showMsg(msgEl, 'Please select an agent.', 'err'); return; }
+
+    const btn = document.getElementById('updateRateBtn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const res = await updateAgentReferralRates(agentId, l1, l2);
+    if (res.success) {
+      showMsg(msgEl, '✅ Rates updated — applies to future sales only.', 'ok');
+      showToast('Rates updated');
+      await loadAll();
+    } else {
+      showMsg(msgEl, 'Error: ' + res.error, 'err');
+    }
+    btn.disabled = false; btn.textContent = '💾 Save Rates';
+  });
+
+  // ── Tree view ─────────────────────────────────────────────────────────────
+  document.getElementById('treeAgentSelect').addEventListener('change', async function() {
+    const agentId = this.value;
+    const treeEl  = document.getElementById('treeView');
+    if (!agentId) { treeEl.innerHTML = '<p class="empty">Select an agent to view their referral network.</p>'; return; }
+
+    treeEl.innerHTML = '<p class="spinner">Building tree…</p>';
+
+    const res = await getReferralTree(agentId);
+    if (!res.success) { treeEl.innerHTML = `<p class="empty">Error: ${res.error}</p>`; return; }
+
+    const agent   = allAgents.find(a => a.id === agentId);
+    const { level1, level2 } = res.data;
+
+    // Commission earned by each recruiter
+    const commMap = {};
+    allComms.forEach(c => {
+      commMap[c.beneficiaryAgentId] = (commMap[c.beneficiaryAgentId] || 0) + (c.commissionAmount || 0);
+    });
+
+    // L2 map: throughAgentId → recruits
+    const l2Map = {};
+    level2.forEach(r => {
+      if (!l2Map[r.throughAgentId]) l2Map[r.throughAgentId] = [];
+      l2Map[r.throughAgentId].push(r);
+    });
+
+    if (!level1.length) {
+      treeEl.innerHTML = `
+        <div class="treeRoot">
+          <div class="treeNodeIco">👤</div>
+          <div class="treeNodeInfo">
+            <strong>${esc(agent?.fullName||agent?.name||'—')}</strong>
+            <small>${esc(agent?.nationalId||agentId)}</small>
+            <div class="treeStat">No recruits yet</div>
+          </div>
+        </div>`;
+      return;
+    }
+
+    const earned = commMap[agentId] || 0;
+    let html = `
+      <div class="treeRoot">
+        <div class="treeNodeIco">👤</div>
+        <div class="treeNodeInfo">
+          <strong>${esc(agent?.fullName||agent?.name||'—')}</strong>
+          <small>${esc(agent?.nationalId||agentId)}</small>
+          <div class="treeStat">Referral earnings: GHS ${fmt(earned)} · ${level1.length} direct recruit${level1.length!==1?'s':''}</div>
+        </div>
+      </div>
+      <div class="treeLevel">`;
+
+    level1.forEach(r1 => {
+      const l2s     = l2Map[r1.recruitedAgentId] || [];
+      const recAgent = allAgents.find(a => a.id === r1.recruitedAgentId);
+      html += `
+        <div class="treeItem">
+          <div class="treeItemIco l1">👥</div>
+          <div class="treeItemInfo">
+            <strong>${esc(r1.recruitedName||'—')}</strong>
+            <small>Level 1 · ${esc(recAgent?.nationalId||r1.recruitedAgentId)}</small>
+          </div>
+          <div class="treeItemStat">
+            <div class="val">5%</div>
+            <div class="lbl">rate</div>
+          </div>
+        </div>
+        ${l2s.length ? `<div class="l2Container">${l2s.map(r2=>`
+          <div class="treeItem">
+            <div class="treeItemIco l2">🔗</div>
+            <div class="treeItemInfo">
+              <strong>${esc(r2.recruitedName||'—')}</strong>
+              <small>Level 2 · via ${esc(r1.recruitedName||'—')}</small>
+            </div>
+            <div class="treeItemStat">
+              <div class="val">2%</div>
+              <div class="lbl">rate</div>
+            </div>
+          </div>`).join('')}</div>` : ''}`;
+    });
+
+    html += '</div>';
+    treeEl.innerHTML = html;
+  });
+
+  // ── CSV Export ────────────────────────────────────────────────────────────
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const rows = allComms.filter(c => levelFilter==='all' || String(c.level)===levelFilter);
+    if (!rows.length) return;
+    const csv = [
+      ['Date','Earner','Source Agent','Level','Sale Value','Rate %','Commission'],
+      ...rows.map(c => {
+        const d = toDate(c.createdAt);
+        return [
+          d ? d.toLocaleDateString('en-GB') : '',
+          c.beneficiaryAgentName||'',
+          c.sourceAgentName||'',
+          c.level,
+          c.saleAmount||0,
+          c.commissionRate||0,
+          c.commissionAmount||0,
+        ];
+      })
+    ].map(r => r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download = `referral-commissions-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  });
+
+  // ── Wire controls ─────────────────────────────────────────────────────────
+  function wireControls() {
+    // Tabs
+    document.querySelectorAll('.tabBtn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tabBtn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tabPane').forEach(p => p.style.display='none');
+        document.getElementById('tab-'+btn.dataset.tab).style.display='block';
+      });
+    });
+
+    // Agent search
+    document.getElementById('agentSearch').addEventListener('input', renderAgentsTable);
+
+    // Commission filters
+    document.getElementById('commSearch').addEventListener('input', function() {
+      commSearch = this.value.trim(); renderCommTable();
+    });
+    document.getElementById('levelFilter').addEventListener('change', function() {
+      levelFilter = this.value; renderCommTable();
+    });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function toDate(val) {
+    if (!val) return null;
+    if (val.toDate)  return val.toDate();
+    if (val.seconds) return new Date(val.seconds * 1000);
+    return new Date(val);
+  }
+  function fmt(n, dp=2) {
+    return Number(n||0).toLocaleString('en-GH',{minimumFractionDigits:dp,maximumFractionDigits:dp});
+  }
+  function esc(str) {
+    return String(str??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+  }
+  function showMsg(el, msg, type) {
+    el.className = 'alert ' + (type==='ok' ? 'alertSuccess' : 'alertError');
+    el.textContent = msg;
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display='none'; }, 5000);
+  }
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.style.display='block';
+    clearTimeout(window._toast);
+    window._toast = setTimeout(()=>{ t.style.display='none'; }, 3500);
+  }
+
+  init();
+</script>
+</body>
+</html>

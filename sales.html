@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Catalog • Hawalina Ventures</title>
+  <link rel="stylesheet" href="ceo-styles-new.css">
+  <style>
+    .logout-nav-btn{margin-top:auto;padding:10px 12px;border-radius:12px;color:rgba(255,255,255,.7);display:flex;gap:10px;align-items:center;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:transparent;width:100%;font-size:14px;}
+    .logout-nav-btn:hover{background:rgba(255,0,0,.2);color:#fff}
+    .filters{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .chip{padding:8px 14px;border-radius:999px;border:1px solid var(--line,#ece7ff);background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:#4b4b63;transition:all .15s}
+    .chip:hover{border-color:#6f4cff;color:#6f4cff}
+    .chip.active{background:#6f4cff;color:#fff;border-color:#6f4cff}
+    .agentSelect{padding:9px 12px;border-radius:12px;border:1px solid var(--line,#ece7ff);background:#fff;font-size:13px;font-weight:600;outline:none;cursor:pointer;min-width:160px}
+    .empty{text-align:center;color:#6b6b7a;padding:20px 10px}
+    td[data-positive]{color:#059669;font-weight:700}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">✦</div>
+      <div><h1>Hawalina Ventures</h1><p>CEO Portal</p></div>
+    </div>
+    <nav class="nav">
+      <a href="dashboard.html"><span class="dot"></span>Dashboard</a>
+      <a href="warehouse.html"><span class="dot"></span>Warehouse</a>
+      <a href="products.html"><span class="dot"></span>Products</a>
+      <a href="agents.html"><span class="dot"></span>Agents</a>
+      <a href="distribute.html"><span class="dot"></span>Distribute Stock</a>
+      <a class="active" href="sales.html"><span class="dot"></span>All Sales</a>
+      <a href="payments.html"><span class="dot"></span>Payments</a>
+      <a href="stockbalance.html"><span class="dot"></span>Stock Balance</a>
+      <a href="analytics.html"><span class="dot"></span>Analytics</a>
+      <a href="settings.html"><span class="dot"></span>Settings</a>
+    </nav>
+    <button class="logout-nav-btn" id="logoutBtn">⎋ &nbsp;Logout</button>
+  </aside>
+
+  <main class="main">
+    <div class="top">
+      <div>
+        <h2>Sales Catalog</h2>
+        <small>Track and view all sales transactions by agents</small>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <section class="grid">
+      <div class="card">
+        <h4>Total Selling Price</h4>
+        <div class="value">GHS <span id="m1">0.00</span></div>
+        <p class="hint">Based on unit selling prices</p>
+      </div>
+      <div class="card">
+        <h4>Overall Total Commission</h4>
+        <div class="value">GHS <span id="m2">0.00</span></div>
+        <p class="hint">Agent commission from all sales</p>
+      </div>
+      <div class="card">
+        <h4>Quantity Sold</h4>
+        <div class="value"><span id="m3">0</span> units</div>
+        <p class="hint">Total products sold</p>
+      </div>
+      <div class="card">
+        <h4>Total Agent Price</h4>
+        <div class="value">GHS <span id="m4">0.00</span></div>
+        <p class="hint">From all sales</p>
+      </div>
+    </section>
+
+    <!-- Filters -->
+    <div class="filters">
+      <select class="agentSelect" id="agentFilter">
+        <option value="">All Agents</option>
+      </select>
+      <button class="chip active" data-period="all">All Time</button>
+      <button class="chip" data-period="7days">7 Days</button>
+      <button class="chip" data-period="30days">30 Days</button>
+      <button class="chip" data-period="thismonth">This Month</button>
+      <button class="chip" data-period="thisquarter">This Quarter</button>
+      <button class="chip" data-period="thisyear">This Year</button>
+    </div>
+
+    <!-- Table -->
+    <section class="panel" style="margin-top:14px">
+      <div class="panelHeader">
+        <h3>📊 Sales Records</h3>
+        <input class="search" placeholder="Search agent, brand, color..." id="search">
+      </div>
+      <div class="panelBody" style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>DATE</th>
+              <th>AGENT</th>
+              <th>BRAND</th>
+              <th>COLOR</th>
+              <th>LENGTH</th>
+              <th>QTY SOLD</th>
+              <th>UNIT AGENT PRICE</th>
+              <th>TOTAL SELLING PRICE</th>
+              <th>TOTAL COMMISSION</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="9" class="empty">Loading sales...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:10px 14px;color:#6b6b7a;font-size:12px;background:rgba(255,255,255,.6)">
+        <span id="countLabel">0 records</span>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script type="module">
+  import { requireRole, logout } from './auth.js';
+  import { getSales, getAllAgents } from './firestore-db.js';
+
+  let allSales = [];
+  let activePeriod = 'all';
+  let activeAgent  = '';
+
+  // ── Auth guard ────────────────────────────────────────────────
+  async function init() {
+    const allowed = await requireRole('ceo');
+    if (!allowed) return;
+    setupListeners();
+    await loadData();
+  }
+
+  // ── Load data ─────────────────────────────────────────────────
+  async function loadData() {
+    document.getElementById('tbody').innerHTML =
+      '<tr><td colspan="9" class="empty">Loading sales...</td></tr>';
+
+    const [salesRes, agentsRes] = await Promise.all([
+      getSales(),       // gets all sales (no agentId filter)
+      getAllAgents()
+    ]);
+
+    allSales = salesRes.success ? salesRes.data : [];
+
+    // Populate agent filter
+    const agentSel = document.getElementById('agentFilter');
+    agentSel.innerHTML = '<option value="">All Agents</option>';
+    if (agentsRes.success) {
+      agentsRes.data.forEach(a => {
+        const name = a.fullName || a.name || 'Unknown';
+        agentSel.innerHTML += `<option value="${a.id}">${esc(name)}</option>`;
+      });
+    }
+
+    applyFilters();
+  }
+
+  // ── Apply period + agent + search filters ─────────────────────
+  function applyFilters() {
+    const search = document.getElementById('search').value.trim().toLowerCase();
+    const now    = new Date();
+
+    const filtered = allSales.filter(s => {
+      const saleDate = toDate(s.saleDate);
+
+      // Period filter
+      if (activePeriod !== 'all' && saleDate) {
+        if (activePeriod === '7days') {
+          const cutoff = new Date(now); cutoff.setDate(now.getDate() - 7);
+          if (saleDate < cutoff) return false;
+        } else if (activePeriod === '30days') {
+          const cutoff = new Date(now); cutoff.setDate(now.getDate() - 30);
+          if (saleDate < cutoff) return false;
+        } else if (activePeriod === 'thismonth') {
+          if (saleDate.getMonth() !== now.getMonth() || saleDate.getFullYear() !== now.getFullYear()) return false;
+        } else if (activePeriod === 'thisquarter') {
+          const q = Math.floor(now.getMonth() / 3);
+          const sq = Math.floor(saleDate.getMonth() / 3);
+          if (sq !== q || saleDate.getFullYear() !== now.getFullYear()) return false;
+        } else if (activePeriod === 'thisyear') {
+          if (saleDate.getFullYear() !== now.getFullYear()) return false;
+        }
+      }
+
+      // Agent filter
+      if (activeAgent && s.agentId !== activeAgent) return false;
+
+      // Search filter
+      if (search) {
+        const blob = `${s.agentName||''} ${s.hairBrand||''} ${s.color||''}`.toLowerCase();
+        if (!blob.includes(search)) return false;
+      }
+
+      return true;
+    });
+
+    updateKPIs(filtered);
+    renderTable(filtered);
+  }
+
+  // ── KPIs ──────────────────────────────────────────────────────
+  function updateKPIs(sales) {
+    const t1 = sales.reduce((s, d) => s + (d.totalSellingPrice || 0), 0);
+    const t2 = sales.reduce((s, d) => s + (d.agentCommission   || 0), 0);
+    const t3 = sales.reduce((s, d) => s + (d.quantity          || 0), 0);
+    const t4 = sales.reduce((s, d) => s + (d.totalAgentPrice   || 0), 0);
+    document.getElementById('m1').textContent = fmt(t1);
+    document.getElementById('m2').textContent = fmt(t2);
+    document.getElementById('m3').textContent = t3;
+    document.getElementById('m4').textContent = fmt(t4);
+  }
+
+  // ── Render table ──────────────────────────────────────────────
+  function renderTable(sales) {
+    const tbody = document.getElementById('tbody');
+    if (!sales.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty">No sales records found.</td></tr>';
+      document.getElementById('countLabel').textContent = '0 records';
+      return;
+    }
+
+    tbody.innerHTML = sales.map(s => {
+      const dateStr    = toDateStr(s.saleDate);
+      const agentName  = s.agentName  || '—';
+      const brand      = s.hairBrand  || s.brand || '—';
+      const color      = s.color      || '—';
+      const length     = s.length     ? `${s.length}"` : '—';
+      const qty        = s.quantity   || 0;
+      const agentPrice = s.agentPrice || s.unitAgentPrice || 0;
+      const totalSell  = s.totalSellingPrice || 0;
+      const commission = s.agentCommission   || 0;
+
+      return `<tr>
+        <td>${esc(dateStr)}</td>
+        <td><strong>${esc(agentName)}</strong></td>
+        <td>${esc(brand)}</td>
+        <td>${esc(color)}</td>
+        <td>${esc(length)}</td>
+        <td><strong>${qty}</strong></td>
+        <td>GHS ${fmt(agentPrice)}</td>
+        <td><strong>GHS ${fmt(totalSell)}</strong></td>
+        <td data-positive="1">GHS ${fmt(commission)}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('countLabel').textContent =
+      `${sales.length} record${sales.length !== 1 ? 's' : ''}`;
+  }
+
+  // ── Listeners ─────────────────────────────────────────────────
+  function setupListeners() {
+    // Period chips
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', function() {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        activePeriod = this.dataset.period;
+        applyFilters();
+      });
+    });
+
+    // Agent filter
+    document.getElementById('agentFilter').addEventListener('change', function() {
+      activeAgent = this.value;
+      applyFilters();
+    });
+
+    // Search
+    document.getElementById('search').addEventListener('input', applyFilters);
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await logout();
+      window.location.href = 'index.html';
+    });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────
+  function toDate(val) {
+    if (!val) return null;
+    if (val.toDate)  return val.toDate();
+    if (val.seconds) return new Date(val.seconds * 1000);
+    return new Date(val);
+  }
+  function toDateStr(val) {
+    const d = toDate(val);
+    if (!d) return '—';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+  function fmt(n) {
+    return Number(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function esc(str) {
+    return String(str ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+  }
+
+  init();
+</script>
+</body>
+</html>

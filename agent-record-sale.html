@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Record Sale • Hawalina Ventures</title>
+  <style>
+    :root{
+      --primary:#6f4cff;--success:#10b981;--warn:#f59e0b;--danger:#ef4444;
+      --line:#ece7ff;--muted:#6b6b7a;--text:#1f1f2a;
+      --shadow:0 8px 24px rgba(25,10,70,.08);--r:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:var(--text);
+      background:radial-gradient(1100px 500px at 60% 0%,rgba(111,76,255,.12),transparent 55%),#f7f4ff;
+    }
+    a{text-decoration:none;color:inherit}
+
+    /* ── App shell ── */
+    .app{display:flex;min-height:100vh}
+
+    /* ── Sidebar ── */
+    .sidebar{
+      width:250px;padding:20px 16px;
+      background:linear-gradient(180deg,#1a0a3c,#120730);
+      color:#fff;position:sticky;top:0;height:100vh;
+      display:flex;flex-direction:column;flex-shrink:0;
+    }
+    .brand{display:flex;gap:10px;align-items:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:12px}
+    .brandIcon{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:18px;flex-shrink:0}
+    .brand h2{font-size:15px;margin:0;line-height:1.2}
+    .brand p{margin:2px 0 0;color:rgba(255,255,255,.55);font-size:11px}
+    .nav{display:flex;flex-direction:column;gap:3px;flex:1}
+    .nav a{padding:9px 11px;border-radius:11px;color:rgba(255,255,255,.75);display:flex;gap:9px;align-items:center;font-size:13px;transition:background .15s}
+    .nav a:hover,.nav a.active{background:rgba(255,255,255,.12);color:#fff}
+    .navIco{width:17px;height:17px;border-radius:5px;display:inline-grid;place-items:center;background:rgba(255,255,255,.1);font-size:10px;flex-shrink:0}
+    .sideFooter{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)}
+    .agentMeta{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+    .agentAvatar{width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:16px;flex-shrink:0}
+    .agentName{font-weight:700;font-size:13px;margin:0;color:#fff}
+    .agentId{color:rgba(255,255,255,.5);font-size:11px;margin:2px 0 0}
+    .logoutBtn{width:100%;padding:9px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:transparent;color:rgba(255,255,255,.65);cursor:pointer;font-size:12px;display:flex;gap:8px;align-items:center;justify-content:center}
+    .logoutBtn:hover{background:rgba(220,50,50,.2);color:#fff}
+
+    /* ── Main ── */
+    .main{flex:1;padding:28px 28px 60px;min-width:0}
+    @media(max-width:640px){.sidebar{display:none}.main{padding:16px 14px 40px}}
+
+    .topBar{margin-bottom:24px}
+    .topBar h1{margin:0 0 4px;font-size:26px}
+    .topBar p{margin:0;color:var(--muted);font-size:14px}
+
+    /* ── Form layout ── */
+    .formWrap{max-width:780px;display:flex;flex-direction:column;gap:18px}
+
+    .card{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+    .cardHead{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+    .cardHead h3{margin:0;font-size:15px}
+    .cardBody{padding:20px 18px}
+
+    /* ── Fields ── */
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:18px}
+    @media(max-width:600px){.row2,.row3{grid-template-columns:1fr}}
+    label{font-weight:700;font-size:13px;display:block;margin-bottom:7px;color:var(--text)}
+    label span{color:var(--danger)}
+    input,select,textarea{
+      width:100%;padding:11px 13px;
+      border:2px solid #e5e7eb;border-radius:10px;
+      font-size:14px;font-family:inherit;outline:none;
+      transition:border-color .15s;background:#fff;
+    }
+    input:focus,select:focus,textarea:focus{border-color:var(--primary)}
+    input.err{border-color:var(--danger)}
+    small.hint{display:block;margin-top:5px;font-size:12px;color:var(--muted)}
+    small.hint.loading{color:var(--primary)}
+
+    /* ── Preview ── */
+    .preview{
+      background:linear-gradient(135deg,rgba(111,76,255,.07),rgba(16,185,129,.07));
+      border:1px solid rgba(111,76,255,.15);
+      border-radius:14px;padding:18px;display:none;
+    }
+    .preview h4{margin:0 0 14px;font-size:14px}
+    .previewGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    @media(max-width:500px){.previewGrid{grid-template-columns:1fr}}
+    .previewCard{background:#fff;border-radius:12px;padding:14px;text-align:center;border:1px solid var(--line)}
+    .previewVal{font-size:18px;font-weight:900;margin:0 0 3px}
+    .previewLabel{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:0}
+
+    /* ── Submit ── */
+    .btnSubmit{
+      width:100%;padding:15px;
+      background:linear-gradient(135deg,#6f4cff,#8b47d9);
+      color:#fff;border:none;border-radius:12px;
+      font-size:15px;font-weight:700;cursor:pointer;
+      box-shadow:0 6px 20px rgba(111,76,255,.35);
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      transition:opacity .15s;
+    }
+    .btnSubmit:hover{opacity:.9}
+    .btnSubmit:disabled{opacity:.5;cursor:not-allowed}
+
+    /* ── Stock grid ── */
+    .stockGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+    .stockChip{
+      background:rgba(111,76,255,.05);border:1px solid var(--line);
+      border-radius:12px;padding:14px;
+    }
+    .stockChip.low{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.04)}
+    .stockChip.out{opacity:.5}
+    .stockName{font-weight:700;font-size:13px;margin:0 0 4px}
+    .stockQty{font-size:13px;color:var(--muted);margin:0}
+    .stockBar{height:5px;border-radius:3px;background:rgba(111,76,255,.1);overflow:hidden;margin-top:8px}
+    .stockFill{height:100%;border-radius:3px;background:linear-gradient(90deg,#6f4cff,#a78bfa);transition:width .4s}
+
+    /* ── Toast ── */
+    .toast{
+      position:fixed;bottom:24px;right:24px;
+      background:#1f1f2a;color:#fff;
+      padding:14px 20px;border-radius:14px;
+      font-size:14px;font-weight:600;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+      display:none;z-index:999;max-width:360px;
+      border-left:4px solid var(--success);
+      animation:slideIn .3s ease;
+    }
+    .toast.err{border-left-color:var(--danger)}
+    @keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+    .empty{color:var(--muted);font-size:13px;text-align:center;padding:20px 0}
+    .spinner{text-align:center;padding:20px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brandIcon">✦</div>
+      <div><h2>Hawalina Ventures</h2><p>Agent Portal</p></div>
+    </div>
+    <nav class="nav">
+      <a href="agent-dashboard.html"><span class="navIco">🧩</span>Dashboard</a>
+      <a class="active" href="agent-record-sale.html"><span class="navIco">💰</span>Record Sale</a>
+      <a href="agent-sales.html"><span class="navIco">📋</span>My Sales</a>
+      <a href="agent-stock.html"><span class="navIco">📦</span>My Stock</a>
+      <a href="agent-commission.html"><span class="navIco">💵</span>My Commission</a>
+      <a href="agent-performance.html"><span class="navIco">📈</span>Performance</a>
+    </nav>
+    <div class="sideFooter">
+      <div class="agentMeta">
+        <div class="agentAvatar">👤</div>
+        <div>
+          <p class="agentName" id="sidebarName">Loading...</p>
+          <p class="agentId"   id="sidebarId">—</p>
+        </div>
+      </div>
+      <button class="logoutBtn" id="logoutBtn">🚪 &nbsp;Logout</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topBar">
+      <h1>💰 Record New Sale</h1>
+      <p>Commission calculated automatically from your stock prices</p>
+    </div>
+
+    <div class="formWrap">
+
+      <!-- Sale form -->
+      <div class="card">
+        <div class="cardHead"><h3>Sale Details</h3></div>
+        <div class="cardBody">
+          <form id="saleForm" style="display:flex;flex-direction:column;gap:18px;">
+
+            <!-- Customer -->
+            <div class="row2">
+              <div>
+                <label>Customer Name <span>*</span></label>
+                <input type="text" id="customerName" placeholder="e.g. Akosua Mensah" required>
+              </div>
+              <div>
+                <label>Customer Phone</label>
+                <input type="tel" id="customerPhone" placeholder="+233 XX XXX XXXX">
+              </div>
+            </div>
+
+            <!-- Product, Qty, Price -->
+            <div class="row3">
+              <div>
+                <label>Product <span>*</span></label>
+                <select id="productSelect" required>
+                  <option value="">— Loading your stock… —</option>
+                </select>
+                <small class="hint loading" id="stockHint">Loading stock from Firestore…</small>
+              </div>
+              <div>
+                <label>Quantity <span>*</span></label>
+                <input type="number" id="qty" placeholder="1" required min="1" step="1">
+                <small class="hint" id="qtyHint"></small>
+              </div>
+              <div>
+                <label>Selling Price / Unit (GHS) <span>*</span></label>
+                <input type="number" id="sellingPrice" placeholder="0.00" required min="0" step="0.01">
+                <small class="hint" id="priceHint">Recommended: —</small>
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <div>
+              <label>Notes <small style="font-weight:400;color:var(--muted)">(optional)</small></label>
+              <textarea id="notes" rows="2" placeholder="Any additional info…" style="resize:vertical"></textarea>
+            </div>
+
+            <!-- Live preview -->
+            <div class="preview" id="preview">
+              <h4>📊 Sale Preview</h4>
+              <div class="previewGrid">
+                <div class="previewCard">
+                  <p class="previewVal" style="color:var(--primary)" id="prevTotal">GHS 0</p>
+                  <p class="previewLabel">Total Sale</p>
+                </div>
+                <div class="previewCard">
+                  <p class="previewVal" style="color:var(--success)" id="prevComm">GHS 0</p>
+                  <p class="previewLabel">Your Commission</p>
+                </div>
+                <div class="previewCard">
+                  <p class="previewVal" style="color:var(--warn)" id="prevStock">— units</p>
+                  <p class="previewLabel">Stock After Sale</p>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="btnSubmit" id="submitBtn">
+              ✅ Record Sale
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Current stock -->
+      <div class="card">
+        <div class="cardHead">
+          <h3>📦 Your Current Stock</h3>
+          <a href="agent-stock.html" style="font-size:12px;color:var(--primary);font-weight:700">View All →</a>
+        </div>
+        <div class="cardBody">
+          <div id="stockDisplay"><p class="spinner">Loading stock…</p></div>
+        </div>
+      </div>
+
+    </div><!-- /formWrap -->
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { requireRole, logout, onAuthChange } from './auth.js';
+  import {
+    getAllAgents, getSales, getDistributions, addSale
+  } from './firestore-db.js';
+
+  // ── State ────────────────────────────────────────────────────────────────
+  let agentId   = null;   // Firestore doc ID
+  let agentData = null;   // full agent doc
+  let stockMap  = {};     // { productKey: { available, agentPrice, sellingPrice, color, hairBrand, length } }
+
+  // ── Auth guard ───────────────────────────────────────────────────────────
+  async function init() {
+    const allowed = await requireRole('agent');
+    if (!allowed) return;
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      if (confirm('Are you sure you want to logout?')) {
+        await logout();
+        window.location.href = 'index.html';
+      }
+    });
+
+    onAuthChange(async (user) => {
+      if (!user) return;
+
+      // Find agent Firestore doc by firebaseUid
+      const allRes = await getAllAgents();
+      if (!allRes.success) return;
+
+      // Retry up to 3 times with backoff — Firestore can be slow on first load
+      let allAgentsData = allRes.data;
+      let match = allAgentsData.find(a => a.firebaseUid === user.uid);
+      if (!match) {
+        for (let attempt = 2; attempt <= 3; attempt++) {
+          await new Promise(r => setTimeout(r, attempt * 800));
+          const retryRes = await getAllAgents();
+          if (retryRes.success && retryRes.data.length > 0) {
+            match = retryRes.data.find(a => a.firebaseUid === user.uid);
+            if (match) break;
+          }
+        }
+      }
+      if (!match) {
+        document.getElementById('sidebarName').textContent = 'Profile error';
+        document.getElementById('sidebarId').textContent   = 'Contact admin';
+        console.warn('Agent profile not found for uid:', user.uid);
+        return;
+      }
+
+      agentId   = match.id;
+      agentData = match;
+
+      document.getElementById('sidebarName').textContent = match.fullName || match.name || 'Agent';
+      document.getElementById('sidebarId').textContent   = match.nationalId || '—';
+
+      await loadStock();
+      wireForm();
+    });
+  }
+
+  // ── Load agent's stock ───────────────────────────────────────────────────
+  // Stock = distributions - sales (per product key)
+  async function loadStock() {
+    const [distRes, salesRes] = await Promise.all([
+      getDistributions(agentId),
+      getSales(agentId)
+    ]);
+
+    const distributions = distRes.success  ? distRes.data  : [];
+    const sales         = salesRes.success ? salesRes.data : [];
+
+    // Build stock map from distributions
+    const rawMap = {}; // key → { qty, agentPrice, sellingPrice, color, hairBrand, length }
+
+    distributions.forEach(d => {
+      const items = d.items && d.items.length
+        ? d.items
+        : [{ hairBrand: d.hairBrand, color: d.color, length: d.length, quantity: d.quantity, agentPrice: d.agentPrice || d.pricePerUnit }];
+
+      items.forEach(item => {
+        const key = makeKey(item.hairBrand, item.color, item.length);
+        if (!rawMap[key]) {
+          rawMap[key] = {
+            hairBrand:    item.hairBrand   || d.hairBrand   || '?',
+            color:        item.color       || d.color       || '',
+            length:       item.length      || d.length      || '?',
+            agentPrice:   item.agentPrice  || d.agentPrice  || d.pricePerUnit || 0,
+            sellingPrice: item.sellingPrice|| d.sellingPrice || 0,
+            qty: 0
+          };
+        }
+        rawMap[key].qty += (item.quantity || 0);
+      });
+    });
+
+    // Subtract sales
+    sales.forEach(s => {
+      const items = s.items && s.items.length
+        ? s.items
+        : [{ hairBrand: s.hairBrand || s.brand, color: s.color, length: s.length, quantity: s.quantity }];
+
+      items.forEach(item => {
+        const key = makeKey(item.hairBrand, item.color, item.length);
+        if (rawMap[key]) {
+          rawMap[key].qty = Math.max(0, rawMap[key].qty - (item.quantity || 0));
+        }
+      });
+    });
+
+    stockMap = rawMap;
+    renderProductDropdown();
+    renderStockDisplay();
+  }
+
+  function makeKey(brand, color, length) {
+    return `${brand || '?'}|${color || ''}|${length || '?'}`;
+  }
+
+  function displayName(item) {
+    const parts = [item.hairBrand];
+    if (item.color)  parts.push(item.color);
+    if (item.length) parts.push(`${item.length}"`);
+    return parts.join(' ');
+  }
+
+  // ── Populate product dropdown ────────────────────────────────────────────
+  function renderProductDropdown() {
+    const sel  = document.getElementById('productSelect');
+    const hint = document.getElementById('stockHint');
+    const entries = Object.entries(stockMap);
+
+    sel.innerHTML = '<option value="">— Select a product —</option>';
+
+    const available = entries.filter(([, v]) => v.qty > 0);
+    const outOfStock = entries.filter(([, v]) => v.qty === 0);
+
+    available.forEach(([key, item]) => {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = `${displayName(item)} (${item.qty} in stock)`;
+      sel.appendChild(opt);
+    });
+
+    if (outOfStock.length) {
+      const grp = document.createElement('optgroup');
+      grp.label = '— Out of Stock —';
+      outOfStock.forEach(([key, item]) => {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = `${displayName(item)} — OUT OF STOCK`;
+        opt.disabled = true;
+        grp.appendChild(opt);
+      });
+      sel.appendChild(grp);
+    }
+
+    if (!entries.length) {
+      sel.innerHTML = '<option value="">No stock available — contact admin</option>';
+      hint.textContent = 'No stock has been assigned to you yet.';
+      hint.style.color = 'var(--danger)';
+    } else {
+      hint.textContent = `${available.length} product type${available.length !== 1 ? 's' : ''} available`;
+      hint.style.color = 'var(--success)';
+    }
+  }
+
+  // ── Render stock cards ───────────────────────────────────────────────────
+  function renderStockDisplay() {
+    const el      = document.getElementById('stockDisplay');
+    const entries = Object.entries(stockMap);
+    if (!entries.length) {
+      el.innerHTML = '<p class="empty">No stock assigned yet. Contact your admin.</p>';
+      return;
+    }
+
+    const totalQty = entries.reduce((s, [, v]) => s + v.qty, 0);
+    const maxQ     = Math.max(...entries.map(([, v]) => v.qty), 1);
+
+    el.innerHTML = `<div class="stockGrid">${entries.map(([, item]) => {
+      const pct  = Math.round((item.qty / maxQ) * 100);
+      const cls  = item.qty === 0 ? 'out' : item.qty <= 3 ? 'low' : '';
+      const qtyLabel = item.qty === 0 ? 'Out of stock' : `${item.qty} unit${item.qty !== 1 ? 's' : ''} available`;
+      return `<div class="stockChip ${cls}">
+        <p class="stockName">${esc(displayName(item))}</p>
+        <p class="stockQty">${qtyLabel}</p>
+        ${item.agentPrice ? `<p class="stockQty" style="color:var(--primary);font-size:12px;margin-top:2px">Agent price: GHS ${fmt(item.agentPrice)}</p>` : ''}
+        <div class="stockBar"><div class="stockFill" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  // ── Wire form interactions ───────────────────────────────────────────────
+  function wireForm() {
+    const sel   = document.getElementById('productSelect');
+    const qty   = document.getElementById('qty');
+    const price = document.getElementById('sellingPrice');
+
+    sel.addEventListener('change', () => {
+      updatePriceHint();
+      updatePreview();
+    });
+    qty.addEventListener('input', updatePreview);
+    price.addEventListener('input', updatePreview);
+  }
+
+  function updatePriceHint() {
+    const key  = document.getElementById('productSelect').value;
+    const hint = document.getElementById('priceHint');
+    const item = stockMap[key];
+    if (item && item.sellingPrice) {
+      hint.textContent = `Recommended: GHS ${fmt(item.sellingPrice)}`;
+      hint.style.color = 'var(--primary)';
+      // Auto-fill if price field is empty
+      const priceEl = document.getElementById('sellingPrice');
+      if (!priceEl.value) priceEl.value = item.sellingPrice;
+    } else {
+      hint.textContent = 'Enter the selling price per unit';
+      hint.style.color = 'var(--muted)';
+    }
+  }
+
+  function updatePreview() {
+    const key       = document.getElementById('productSelect').value;
+    const qtyVal    = parseInt(document.getElementById('qty').value) || 0;
+    const priceVal  = parseFloat(document.getElementById('sellingPrice').value) || 0;
+    const item      = stockMap[key];
+    const preview   = document.getElementById('preview');
+    const qtyHint   = document.getElementById('qtyHint');
+
+    if (!item || qtyVal <= 0 || priceVal <= 0) {
+      preview.style.display = 'none';
+      qtyHint.textContent = '';
+      return;
+    }
+
+    // Stock validation hint
+    if (qtyVal > item.qty) {
+      qtyHint.textContent = `⚠️ Only ${item.qty} unit${item.qty !== 1 ? 's' : ''} available`;
+      qtyHint.style.color = 'var(--danger)';
+    } else {
+      qtyHint.textContent = `${item.qty - qtyVal} unit${(item.qty - qtyVal) !== 1 ? 's' : ''} remaining after sale`;
+      qtyHint.style.color = 'var(--success)';
+    }
+
+    const total      = qtyVal * priceVal;
+    const commission = qtyVal * (priceVal - (item.agentPrice || 0));
+    const remaining  = item.qty - qtyVal;
+
+    document.getElementById('prevTotal').textContent = 'GHS ' + fmt(total);
+    document.getElementById('prevComm').textContent  = 'GHS ' + fmt(Math.max(0, commission));
+    document.getElementById('prevStock').textContent = remaining + ' unit' + (remaining !== 1 ? 's' : '');
+    document.getElementById('prevStock').style.color = remaining < 0 ? 'var(--danger)' : 'var(--warn)';
+    preview.style.display = 'block';
+  }
+
+  // ── Form submission ──────────────────────────────────────────────────────
+  function wireForm2() {} // placeholder — submission wired inline below
+
+  document.getElementById('saleForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const key          = document.getElementById('productSelect').value;
+    const qtyVal       = parseInt(document.getElementById('qty').value);
+    const priceVal     = parseFloat(document.getElementById('sellingPrice').value);
+    const customerName = document.getElementById('customerName').value.trim();
+    const customerPhone= document.getElementById('customerPhone').value.trim();
+    const notes        = document.getElementById('notes').value.trim();
+
+    const item = stockMap[key];
+
+    // Validations
+    if (!key || !item)     { showToast('Please select a product.', true); return; }
+    if (!customerName)     { showToast('Please enter customer name.', true); return; }
+    if (!qtyVal || qtyVal < 1){ showToast('Please enter a valid quantity.', true); return; }
+    if (!priceVal || priceVal <= 0){ showToast('Please enter a valid selling price.', true); return; }
+    if (qtyVal > item.qty) { showToast(`Not enough stock! Only ${item.qty} unit${item.qty !== 1 ? 's' : ''} available.`, true); return; }
+
+    const totalSellingPrice = qtyVal * priceVal;
+    const agentCommission   = qtyVal * (priceVal - (item.agentPrice || 0));
+
+    const saleData = {
+      agentId,
+      agentName:        agentData.fullName || agentData.name || 'Agent',
+      customerName,
+      customerPhone,
+      hairBrand:        item.hairBrand,
+      color:            item.color,
+      length:           item.length,
+      quantity:         qtyVal,
+      sellingPrice:     priceVal,
+      agentPrice:       item.agentPrice || 0,
+      totalSellingPrice,
+      agentCommission:  Math.max(0, agentCommission),
+      notes,
+      saleDate:         new Date().toISOString(),
+    };
+
+    // Disable submit while saving
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    try {
+      const result = await addSale(saleData);
+      if (result.success) {
+        showToast(`✅ Sale recorded! Commission: GHS ${fmt(Math.max(0, agentCommission))}`);
+        // Update local stock map
+        stockMap[key].qty = Math.max(0, stockMap[key].qty - qtyVal);
+        renderProductDropdown();
+        renderStockDisplay();
+        // Reset form
+        document.getElementById('saleForm').reset();
+        document.getElementById('preview').style.display = 'none';
+        document.getElementById('qtyHint').textContent = '';
+        document.getElementById('priceHint').textContent = 'Recommended: —';
+        document.getElementById('stockHint').style.color = '';
+      } else {
+        showToast('Failed to save sale: ' + (result.error || 'Unknown error'), true);
+      }
+    } catch (err) {
+      showToast('Error: ' + err.message, true);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '✅ Record Sale';
+    }
+  });
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function showToast(msg, isErr = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className   = 'toast' + (isErr ? ' err' : '');
+    t.style.display = 'block';
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => { t.style.display = 'none'; }, 4500);
+  }
+
+  function fmt(n) {
+    return Number(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function esc(str) {
+    return String(str ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+  }
+
+  init();
+</script>
+</body>
+</html>

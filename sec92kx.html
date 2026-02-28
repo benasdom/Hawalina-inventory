@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Access - Hawalina Ventures</title>
+    <link rel="stylesheet" href="auth-styles.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="logo">✦</div>
+                <h1>Hawalina Ventures</h1>
+                <p>CEO / Admin Portal</p>
+                <small style="color:#ef4444;font-size:0.85rem;">🔒 Restricted Access</small>
+            </div>
+            
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="admin@hawalina.com" required autofocus>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter password" required>
+                </div>
+                
+                <div id="errorMessage" class="error-message" style="display:none;"></div>
+                
+                <button type="submit" class="auth-button" id="loginBtn">
+                    <span id="btnText">Login as Admin</span>
+                    <span id="btnLoader" class="loader" style="display:none;"></span>
+                </button>
+            </form>
+            
+            <div class="auth-footer">
+                <a href="index.html">← Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { loginCEO } from './auth.js';
+        
+        const form = document.getElementById('loginForm');
+        const errorMsg = document.getElementById('errorMessage');
+        const loginBtn = document.getElementById('loginBtn');
+        const btnText = document.getElementById('btnText');
+        const btnLoader = document.getElementById('btnLoader');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showError('Please enter both email and password');
+                return;
+            }
+            
+            loginBtn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoader.style.display = 'inline-block';
+            errorMsg.style.display = 'none';
+            
+            try {
+                const result = await loginCEO(email, password);
+                
+                if (result.success) {
+                    window.location.href = "dashboard.html";
+                } else {
+                    showError(result.error || 'Login failed. Invalid credentials.');
+                    resetButton();
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('An unexpected error occurred.');
+                resetButton();
+            }
+        });
+        
+        function showError(message) {
+            errorMsg.textContent = message;
+            errorMsg.style.display = 'block';
+        }
+        
+        function resetButton() {
+            loginBtn.disabled = false;
+            btnText.style.display = 'inline';
+            btnLoader.style.display = 'none';
+        }
+    </script>
+    
+    <style>
+        .loader {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+    </style>
+</body>
+</html>

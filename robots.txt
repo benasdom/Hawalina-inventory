@@ -1,0 +1,19 @@
+# Robots.txt - Block search engines from indexing admin pages
+
+User-agent: *
+Disallow: /sec92kx.html
+Disallow: /dash4m8p.html
+Disallow: /wh9r2t6.html
+Disallow: /prod3x7n.html
+Disallow: /agt5h2j9.html
+Disallow: /dist8c4b.html
+Disallow: /sale1f6k.html
+Disallow: /pay4t8r2.html
+Disallow: /stk7w3e9.html
+Disallow: /anlyt2k6.html
+Disallow: /rpt9i5o3.html
+
+# Allow public pages
+Allow: /index.html
+Allow: /agent-login.html
+Allow: /agent-*.html

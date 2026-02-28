@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Agent Stock Balance • Hawalina Ventures</title>
+  <style>
+    :root{
+      --bg:#f7f4ff;--text:#1f1f2a;--muted:#6b6b7a;--primary:#6f4cff;
+      --line:#ece7ff;--shadow:0 10px 25px rgba(25,10,70,.08);--r:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 70% 0%,rgba(111,76,255,.22),transparent 55%),
+        radial-gradient(900px 500px at 0% 30%,rgba(139,107,255,.14),transparent 60%),
+        var(--bg);
+    }
+    a{color:inherit;text-decoration:none}
+    .app{display:flex;min-height:100vh}
+
+    /* ── Sidebar ── */
+    .sidebar{width:260px;padding:22px 18px;background:linear-gradient(180deg,#24134f,#1a1036);color:#fff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;}
+    .brand{display:flex;gap:12px;align-items:center;padding:10px 10px 18px}
+    .logo{width:46px;height:46px;border-radius:16px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:18px}
+    .brand h1{font-size:18px;margin:0;line-height:1.1}
+    .brand p{margin:4px 0 0;color:rgba(255,255,255,.7);font-size:12px}
+    .nav{margin-top:10px;display:flex;flex-direction:column;gap:6px;flex:1}
+    .nav a{padding:10px 12px;border-radius:12px;color:rgba(255,255,255,.86);display:flex;gap:10px;align-items:center}
+    .nav a:hover,.nav a.active{background:rgba(255,255,255,.12);color:#fff}
+    .ico{width:18px;height:18px;border-radius:6px;display:inline-grid;place-items:center;background:rgba(255,255,255,.10);font-size:12px}
+    .logout-btn{margin-top:auto;padding:10px 12px;border-radius:12px;color:rgba(255,255,255,.7);display:flex;gap:10px;align-items:center;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:transparent;width:100%;font-size:14px;}
+    .logout-btn:hover{background:rgba(255,0,0,.2);color:#fff}
+
+    /* ── Main ── */
+    .main{flex:1;padding:26px 26px 40px}
+    @media(max-width:620px){.sidebar{display:none}}
+    .topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+    .titleWrap{display:flex;gap:10px;align-items:flex-start}
+    .pageIcon{width:42px;height:42px;border-radius:14px;background:rgba(111,76,255,.12);border:1px solid rgba(111,76,255,.18);display:grid;place-items:center;font-size:20px;margin-top:2px}
+    .title h2{margin:0;font-size:30px}
+    .title small{color:var(--muted);display:block;margin-top:4px}
+
+    /* ── KPIs ── */
+    .kpis{margin-top:16px;display:grid;grid-template-columns:repeat(4,minmax(200px,1fr));gap:14px}
+    @media(max-width:1150px){.kpis{grid-template-columns:repeat(2,minmax(200px,1fr))}}
+    @media(max-width:620px){.kpis{grid-template-columns:1fr}}
+    .card{background:rgba(255,255,255,.86);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;display:flex;gap:12px;align-items:flex-start;}
+    .stripe{position:absolute;left:0;top:0;bottom:0;width:5px}
+    .cardIcon{width:46px;height:46px;border-radius:14px;background:rgba(111,76,255,.10);border:1px solid rgba(111,76,255,.18);display:grid;place-items:center;font-size:22px;flex:0 0 auto}
+    .cardText{flex:1}
+    .cardTitle{font-size:12px;letter-spacing:.02em;color:#3c3c52;text-transform:uppercase;margin:2px 0 6px;font-weight:900}
+    .cardValue{font-size:26px;font-weight:900;margin:0}
+    .cardHint{margin:4px 0 0;color:var(--muted);font-size:12px}
+
+    /* ── Filters ── */
+    .filtersPanel{margin-top:14px;background:rgba(255,255,255,.70);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:14px}
+    .filtersRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    .agentSelect{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;outline:none;cursor:pointer;min-width:200px}
+    .search{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;min-width:260px;outline:none}
+
+    /* ── Panel ── */
+    .panel{margin-top:14px;background:rgba(255,255,255,.80);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+    .panelHeader{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap}
+    .panelHeader h3{margin:0;font-size:18px}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    th,td{padding:12px 10px;border-bottom:1px solid var(--line);font-size:13px;text-align:left;vertical-align:middle;white-space:nowrap}
+    th{background:rgba(111,76,255,.06);color:#4b4b63;font-weight:900}
+    tbody tr:hover td{background:rgba(111,76,255,.035)}
+    tfoot td{font-weight:900;background:rgba(111,76,255,.06);border-top:2px solid var(--line)}
+    .num{font-weight:900}
+    .stockBar{width:100px;height:8px;border-radius:999px;background:rgba(111,76,255,.12);overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
+    .stockBarFill{height:100%;border-radius:999px;background:var(--primary)}
+    .stockBarFill.low{background:#f59e0b}
+    .stockBarFill.out{background:#ef4444}
+    .badge-ok{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(16,185,129,.12);color:#065f46;border:1px solid rgba(16,185,129,.25)}
+    .badge-low{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(245,158,11,.12);color:#7c5200;border:1px solid rgba(245,158,11,.25)}
+    .badge-out{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(239,68,68,.10);color:#991b1b;border:1px solid rgba(239,68,68,.25)}
+    .tfoot-bar{padding:10px 14px;color:var(--muted);font-size:12px;background:rgba(255,255,255,.55)}
+    .empty{text-align:center;color:var(--muted);padding:20px 10px}
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">✦</div>
+      <div><h1>Hawalina Ventures</h1><p>CEO Portal</p></div>
+    </div>
+    <nav class="nav">
+      <a href="dashboard.html"><span class="ico">🧩</span>Dashboard</a>
+      <a href="warehouse.html"><span class="ico">📦</span>Warehouse</a>
+      <a href="products.html"><span class="ico">🧴</span>Products</a>
+      <a href="agents.html"><span class="ico">🧑🏾‍💼</span>Agents</a>
+      <a href="distribute.html"><span class="ico">🚚</span>Distribute Stock</a>
+      <a href="sales.html"><span class="ico">🧾</span>All Sales</a>
+      <a href="payments.html"><span class="ico">💳</span>Payments</a>
+      <a class="active" href="stockbalance.html"><span class="ico">📊</span>Stock Balance</a>
+      <a href="analytics.html"><span class="ico">📈</span>Analytics</a>
+      <a href="settings.html"><span class="ico">⚙️</span>Settings</a>
+    </nav>
+    <button class="logout-btn" id="logoutBtn">⎋ &nbsp;Logout</button>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="titleWrap">
+        <div class="pageIcon">📋</div>
+        <div class="title">
+          <h2>Agent Stock Balance</h2>
+          <small>Track inventory held by each agent — distributed minus sold</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <section class="kpis">
+      <div class="card">
+        <span class="stripe" style="background:linear-gradient(180deg,#ffb86b,#6f4cff)"></span>
+        <div class="cardIcon">📦</div>
+        <div class="cardText">
+          <div class="cardTitle">TOTAL DISTRIBUTED</div>
+          <p class="cardValue"><span id="kpiReceived">0</span> <span style="font-size:.6em">units</span></p>
+          <p class="cardHint">Sent to all agents</p>
+        </div>
+      </div>
+      <div class="card">
+        <span class="stripe" style="background:linear-gradient(180deg,#60a5fa,#3b82f6)"></span>
+        <div class="cardIcon">🛍️</div>
+        <div class="cardText">
+          <div class="cardTitle">TOTAL SOLD</div>
+          <p class="cardValue"><span id="kpiSold">0</span> <span style="font-size:.6em">units</span></p>
+          <p class="cardHint">Across all agents</p>
+        </div>
+      </div>
+      <div class="card">
+        <span class="stripe" style="background:linear-gradient(180deg,#34d399,#10b981)"></span>
+        <div class="cardIcon">🧱</div>
+        <div class="cardText">
+          <div class="cardTitle">TOTAL REMAINING</div>
+          <p class="cardValue"><span id="kpiRemain">0</span> <span style="font-size:.6em">units</span></p>
+          <p class="cardHint">Unsold stock with agents</p>
+        </div>
+      </div>
+      <div class="card">
+        <span class="stripe" style="background:linear-gradient(180deg,#fbbf24,#f59e0b)"></span>
+        <div class="cardIcon">💵</div>
+        <div class="cardText">
+          <div class="cardTitle">REMAINING VALUE</div>
+          <p class="cardValue">GHS <span id="kpiValue">0.00</span></p>
+          <p class="cardHint">Remaining × agent price</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="filtersPanel">
+      <div class="filtersRow">
+        <select class="agentSelect" id="agentFilter">
+          <option value="">All Agents</option>
+        </select>
+        <input class="search" id="search" placeholder="Search by agent, brand, color..." />
+      </div>
+    </section>
+
+    <!-- Table -->
+    <section class="panel">
+      <div class="panelHeader">
+        <h3>📊 Stock by Agent &amp; Product</h3>
+      </div>
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>AGENT</th>
+              <th>BRAND</th>
+              <th>COLOR</th>
+              <th>LENGTH</th>
+              <th>DISTRIBUTED</th>
+              <th>SOLD</th>
+              <th>REMAINING</th>
+              <th>REMAINING VALUE</th>
+              <th>STATUS</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="9" class="empty">Loading stock balance...</td></tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4">TOTALS</td>
+              <td class="num" id="tDistributed">0</td>
+              <td class="num" id="tSold">0</td>
+              <td class="num" id="tRemain">0</td>
+              <td class="num">GHS <span id="tValue">0.00</span></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="tfoot-bar"><span id="countLabel">0 records</span></div>
+    </section>
+  </main>
+</div>
+
+<script type="module">
+  import { requireRole, logout } from './auth.js';
+  import { getAllAgents, getDistributions, getSales } from './firestore-db.js';
+
+  let rows        = []; // computed balance rows
+  let agents      = [];
+  let activeAgent = '';
+
+  // ── Auth guard ────────────────────────────────────────────────
+  async function init() {
+    const allowed = await requireRole('ceo');
+    if (!allowed) return;
+    setupListeners();
+    await loadData();
+  }
+
+  // ── Load & compute balance ────────────────────────────────────
+  async function loadData() {
+    document.getElementById('tbody').innerHTML =
+      '<tr><td colspan="9" class="empty">Loading stock balance...</td></tr>';
+
+    const [agentRes, distRes, salesRes] = await Promise.all([
+      getAllAgents(),
+      getDistributions(),   // all distributions
+      getSales()            // all sales
+    ]);
+
+    agents = agentRes.success ? agentRes.data : [];
+
+    const distributions = distRes.success  ? distRes.data  : [];
+    const sales         = salesRes.success ? salesRes.data : [];
+
+    // Populate agent filter
+    const agentSel = document.getElementById('agentFilter');
+    agentSel.innerHTML = '<option value="">All Agents</option>';
+    agents.forEach(a =>
+      agentSel.innerHTML += `<option value="${a.id}">${esc(a.fullName||a.name||'Unknown')}</option>`
+    );
+
+    // ── Build balance map: key = agentId|brand|color|length ──
+    // Map: key → { agentId, agentName, brand, color, length, distributed, sold, unitAgentPrice }
+    const map = {};
+
+    const key = (agentId, brand, color, length) =>
+      `${agentId}||${brand}||${color}||${String(length)}`;
+
+    // Add distributions
+    distributions.forEach(d => {
+      // Each distribution may have items array or flat fields
+      const items = d.items && d.items.length
+        ? d.items
+        : [{ hairBrand: d.hairBrand, color: d.color, length: d.length, quantity: d.quantity, agentPrice: d.unitAgentPrice }];
+
+      items.forEach(item => {
+        const k = key(d.agentId, item.hairBrand, item.color, item.length);
+        if (!map[k]) {
+          const agent = agents.find(a => a.id === d.agentId);
+          map[k] = {
+            agentId:        d.agentId,
+            agentName:      d.agentName || (agent ? (agent.fullName||agent.name) : '—'),
+            brand:          item.hairBrand || '—',
+            color:          item.color     || '—',
+            length:         item.length    || '—',
+            distributed:    0,
+            sold:           0,
+            unitAgentPrice: item.agentPrice || d.unitAgentPrice || 0
+          };
+        }
+        map[k].distributed += (item.quantity || 0);
+      });
+    });
+
+    // Subtract sales
+    sales.forEach(s => {
+      const items = s.items && s.items.length
+        ? s.items
+        : [{ hairBrand: s.hairBrand, color: s.color, length: s.length, quantity: s.quantity }];
+
+      items.forEach(item => {
+        const k = key(s.agentId, item.hairBrand||s.hairBrand, item.color||s.color, item.length||s.length);
+        if (map[k]) {
+          map[k].sold += (item.quantity || s.quantity || 0);
+        } else {
+          // Sale exists but no matching distribution record — add row with 0 distributed
+          const agent = agents.find(a => a.id === s.agentId);
+          map[k] = {
+            agentId:        s.agentId,
+            agentName:      s.agentName || (agent ? (agent.fullName||agent.name) : '—'),
+            brand:          item.hairBrand || s.hairBrand || '—',
+            color:          item.color     || s.color     || '—',
+            length:         item.length    || s.length    || '—',
+            distributed:    0,
+            sold:           item.quantity  || s.quantity  || 0,
+            unitAgentPrice: s.unitAgentPrice || 0
+          };
+        }
+      });
+    });
+
+    rows = Object.values(map).sort((a, b) =>
+      a.agentName.localeCompare(b.agentName) ||
+      a.brand.localeCompare(b.brand)
+    );
+
+    applyFilters();
+  }
+
+  // ── Apply filters ─────────────────────────────────────────────
+  function applyFilters() {
+    const q = document.getElementById('search').value.trim().toLowerCase();
+
+    const filtered = rows.filter(r => {
+      if (activeAgent && r.agentId !== activeAgent) return false;
+      if (q) {
+        const blob = `${r.agentName} ${r.brand} ${r.color} ${r.length}`.toLowerCase();
+        if (!blob.includes(q)) return false;
+      }
+      return true;
+    });
+
+    updateKPIs(filtered);
+    renderTable(filtered);
+  }
+
+  // ── KPIs ──────────────────────────────────────────────────────
+  function updateKPIs(filtered) {
+    const totalDist   = filtered.reduce((s, r) => s + r.distributed, 0);
+    const totalSold   = filtered.reduce((s, r) => s + r.sold, 0);
+    const totalRemain = filtered.reduce((s, r) => s + Math.max(0, r.distributed - r.sold), 0);
+    const totalVal    = filtered.reduce((s, r) => {
+      const rem = Math.max(0, r.distributed - r.sold);
+      return s + rem * (r.unitAgentPrice || 0);
+    }, 0);
+
+    document.getElementById('kpiReceived').textContent = totalDist;
+    document.getElementById('kpiSold').textContent     = totalSold;
+    document.getElementById('kpiRemain').textContent   = totalRemain;
+    document.getElementById('kpiValue').textContent    = fmt(totalVal);
+
+    document.getElementById('tDistributed').textContent = totalDist;
+    document.getElementById('tSold').textContent        = totalSold;
+    document.getElementById('tRemain').textContent      = totalRemain;
+    document.getElementById('tValue').textContent       = fmt(totalVal);
+  }
+
+  // ── Render table ──────────────────────────────────────────────
+  function renderTable(filtered) {
+    const tbody = document.getElementById('tbody');
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty">No stock balance records found.</td></tr>';
+      document.getElementById('countLabel').textContent = '0 records';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(r => {
+      const remaining = Math.max(0, r.distributed - r.sold);
+      const pct       = r.distributed > 0 ? (remaining / r.distributed) * 100 : 0;
+      const value     = remaining * (r.unitAgentPrice || 0);
+
+      let statusClass = 'badge-ok', statusText = '● In Stock';
+      let barClass    = '';
+      if (remaining === 0)       { statusClass = 'badge-out'; statusText = '○ Sold Out'; barClass = 'out'; }
+      else if (pct < 30)         { statusClass = 'badge-low'; statusText = '▲ Low Stock'; barClass = 'low'; }
+
+      return `<tr>
+        <td><strong>${esc(r.agentName)}</strong></td>
+        <td>${esc(r.brand)}</td>
+        <td>${esc(r.color)}</td>
+        <td>${esc(String(r.length))}"</td>
+        <td class="num">${r.distributed}</td>
+        <td class="num">${r.sold}</td>
+        <td class="num">
+          <span class="stockBar"><span class="stockBarFill ${barClass}" style="width:${Math.round(pct)}%"></span></span>
+          ${remaining}
+        </td>
+        <td>GHS ${fmt(value)}</td>
+        <td><span class="${statusClass}">${statusText}</span></td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('countLabel').textContent =
+      `${filtered.length} record${filtered.length !== 1 ? 's' : ''}`;
+  }
+
+  // ── Listeners ─────────────────────────────────────────────────
+  function setupListeners() {
+    document.getElementById('agentFilter').addEventListener('change', function() {
+      activeAgent = this.value;
+      applyFilters();
+    });
+    document.getElementById('search').addEventListener('input', applyFilters);
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await logout();
+      window.location.href = 'index.html';
+    });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────
+  function fmt(n) {
+    return Number(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function esc(str) {
+    return String(str ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+  }
+
+  init();
+</script>
+</body>
+</html>

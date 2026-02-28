@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Warehouse Inventory • Hawalina Ventures</title>
+  <link rel="stylesheet" href="ceo-styles-new.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">✦</div>
+      <div>
+        <h1>Hawalina Ventures</h1>
+        <p>CEO Portal</p>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="dashboard.html"><span class="dot"></span>Dashboard</a>
+      <a class="active" href="warehouse.html"><span class="dot"></span>Warehouse</a>
+      <a href="products.html"><span class="dot"></span>Products</a>
+      <a href="agents.html"><span class="dot"></span>Agents</a>
+      <a href="distribute.html"><span class="dot"></span>Distribute Stock</a>
+      <a href="sales.html"><span class="dot"></span>All Sales</a>
+      <a href="payments.html"><span class="dot"></span>Payments</a>
+      <a href="stockbalance.html"><span class="dot"></span>Stock Balance</a>
+      <a href="analytics.html"><span class="dot"></span>Analytics</a>
+    </nav>
+    <button class="logout-nav-btn" id="logoutBtn">⎋ &nbsp;Logout</button>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="top">
+      <div>
+        <h2>Warehouse Inventory</h2>
+        <small>Manage imported stock and track availability</small>
+      </div>
+      <button class="btn" id="openAddStockBtn">+ Add New Stock</button>
+    </div>
+
+    <!-- Metrics -->
+    <section class="grid">
+      <div class="card">
+        <h4>Total Import Value</h4>
+        <div class="value">GHS <span id="total-import-value">0.00</span></div>
+        <p class="hint">Unit Import Price × total quantity imported</p>
+      </div>
+      <div class="card">
+        <h4>Available Import Value</h4>
+        <div class="value">GHS <span id="available-value">0.00</span></div>
+        <p class="hint">Unit Import Price × available quantity</p>
+      </div>
+      <div class="card">
+        <h4>Distributed Quantity</h4>
+        <div class="value"><span id="distributed-qty">0</span> units</div>
+        <p class="hint">Total quantity distributed to agents</p>
+      </div>
+      <div class="card">
+        <h4>Low Stock Products</h4>
+        <div class="value"><span id="low-stock">0</span></div>
+        <p class="hint">Products below 10 units</p>
+      </div>
+    </section>
+
+    <!-- Warehouse Stock Table -->
+    <section class="panel">
+      <div class="panelHeader">
+        <h3>📦 Warehouse Stock</h3>
+        <div class="toolbar">
+          <span style="color:var(--muted);font-size:12px" id="stock-count">0 items</span>
+          <input class="search" placeholder="Search stock..." id="search-stock">
+        </div>
+      </div>
+      <div class="panelBody">
+        <table>
+          <thead>
+            <tr>
+              <th>Brand</th>
+              <th>Color</th>
+              <th>Length</th>
+              <th>Import Qty</th>
+              <th>Available Qty</th>
+              <th>Unit Import Price</th>
+              <th>Total Import Value</th>
+              <th>Supplier</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="warehouse-tbody">
+            <tr><td colspan="10" class="empty">Loading warehouse stock...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Add New Stock Modal -->
+<div id="stock-modal" class="modal">
+  <div class="box" style="max-width:760px">
+    <div class="boxHead">
+      <div>+ Add New Stock</div>
+      <button class="btn ghost" id="closeStockBtn" style="padding:6px 10px">✕</button>
+    </div>
+    <div class="boxBody">
+
+      <!-- Loading state shown while brands are fetching -->
+      <div id="modal-loader" style="text-align:center;padding:32px;color:var(--muted)">
+        <div class="spin"></div>
+        <p style="margin-top:12px;font-size:14px">Loading products...</p>
+      </div>
+
+      <form id="stock-form" style="display:none">
+        <div class="grid2">
+          <div class="field">
+            <label>Hair Brand *</label>
+            <select id="stock-brand" required>
+              <option value="">Select Brand</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Color *</label>
+            <select id="stock-color" required disabled>
+              <option value="">Select brand first</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Length *</label>
+            <select id="stock-length" required disabled>
+              <option value="">Select color first</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Import Quantity *</label>
+            <input type="number" id="stock-quantity" min="1" required placeholder="e.g., 50">
+          </div>
+          <div class="field">
+            <label>Unit Import Price (GHS) *</label>
+            <input type="number" id="stock-price" step="0.01" min="0" required placeholder="e.g., 100">
+          </div>
+          <div class="field">
+            <label>Total Import Value</label>
+            <input type="text" id="total-import-value-calc" readonly
+              style="background:rgba(111,76,255,.05);font-weight:600" value="GHS 0.00">
+          </div>
+          <div class="field">
+            <label>Supplier</label>
+            <input type="text" id="stock-supplier" placeholder="e.g., Global Hair Ltd">
+          </div>
+          <div class="field">
+            <label>Import Date *</label>
+            <input type="date" id="stock-date" required>
+          </div>
+        </div>
+
+        <div style="background:rgba(111,76,255,.05);padding:12px;border-radius:12px;border-left:3px solid var(--primary);margin-bottom:14px">
+          <strong style="font-size:13px">Product Selected:</strong>
+          <p id="preview-stock-name" style="margin:4px 0 0;font-weight:600;color:var(--primary)">
+            Select brand, color, and length
+          </p>
+        </div>
+
+        <div id="stock-form-error" style="display:none;padding:10px 12px;border-radius:10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#b91c1c;font-size:13px;margin-bottom:12px"></div>
+
+        <div class="actions">
+          <button type="button" class="btn ghost" id="cancelStockBtn">Cancel</button>
+          <button type="submit" class="btn" id="save-stock-btn">Add Stock</button>
+        </div>
+      </form>
+
+      <!-- No products warning -->
+      <div id="no-products-msg" style="display:none;text-align:center;padding:32px">
+        <p style="font-size:32px;margin:0">📭</p>
+        <p style="font-weight:700;margin:10px 0 4px">No products in catalog</p>
+        <p style="color:var(--muted);font-size:13px">Add products in the <a href="products.html" style="color:var(--primary)">Products</a> page first before adding warehouse stock.</p>
+        <button class="btn ghost" id="noProductsCancelBtn" style="margin-top:16px">Close</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<style>
+  .logout-nav-btn{
+    margin-top:auto;padding:10px 12px;border-radius:12px;
+    color:rgba(255,255,255,.7);display:flex;gap:10px;align-items:center;
+    cursor:pointer;border:1px solid rgba(255,255,255,.15);
+    background:transparent;width:100%;font-size:14px;
+  }
+  .logout-nav-btn:hover{background:rgba(255,0,0,.2);color:#fff}
+  .spin{
+    width:28px;height:28px;border:3px solid rgba(111,76,255,.2);
+    border-top-color:var(--primary);border-radius:50%;
+    animation:spin .7s linear infinite;margin:0 auto;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  select:disabled{opacity:.5;cursor:not-allowed}
+</style>
+
+<script type="module">
+  import { requireRole, logout } from './auth.js';
+  import {
+    getWarehouseStock,
+    addWarehouseStock,
+    getHairBrands,
+    getColorsByBrand,
+    getLengthsByBrandAndColor
+  } from './firestore-db.js';
+  import { deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+  import { db } from './firebase-config.js';
+
+  let allStock = [];
+
+  // ── Auth + boot ───────────────────────────────────────────────
+  async function init() {
+    const allowed = await requireRole('ceo');
+    if (!allowed) return;
+    attachListeners();       // attach ALL event listeners upfront
+    await loadWarehouseStock();
+  }
+
+  // ── Load warehouse stock ──────────────────────────────────────
+  async function loadWarehouseStock() {
+    document.getElementById('warehouse-tbody').innerHTML =
+      '<tr><td colspan="10" class="empty">Loading warehouse stock...</td></tr>';
+
+    const result = await getWarehouseStock();
+    if (!result.success) {
+      document.getElementById('warehouse-tbody').innerHTML =
+        '<tr><td colspan="10" class="empty">Error loading stock. Please refresh.</td></tr>';
+      return;
+    }
+    allStock = result.data;
+    renderTable(allStock);
+    updateStats(allStock);
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────
+  function updateStats(stock) {
+    const totalImport = stock.reduce((s, i) => s + (i.totalImportValue    || 0), 0);
+    const availVal    = stock.reduce((s, i) => s + (i.availableTotalValue  || 0), 0);
+    const distributed = stock.reduce((s, i) => s + (i.distributedQuantity || 0), 0);
+    const lowStock    = stock.filter(i => i.availableQuantity > 0 && i.availableQuantity < 10).length;
+
+    document.getElementById('total-import-value').textContent = fmt(totalImport);
+    document.getElementById('available-value').textContent    = fmt(availVal);
+    document.getElementById('distributed-qty').textContent    = distributed;
+    document.getElementById('low-stock').textContent          = lowStock;
+    document.getElementById('stock-count').textContent        = `${stock.length} item${stock.length !== 1 ? 's' : ''}`;
+  }
+
+  // ── Render table ──────────────────────────────────────────────
+  function renderTable(stock) {
+    const tbody = document.getElementById('warehouse-tbody');
+    if (!stock.length) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty">No stock in warehouse. Add your first stock!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = stock.map(item => {
+      const avail     = item.availableQuantity ?? 0;
+      const statusCls = avail === 0 ? 'depleted' : avail < 10 ? 'low' : 'ok';
+      const statusTxt = avail === 0 ? '○ Depleted' : avail < 10 ? '▲ Low Stock' : '● In Stock';
+      return `<tr>
+        <td><strong>${esc(item.hairBrand || '')}</strong></td>
+        <td>${esc(item.color || '')}</td>
+        <td>${esc(String(item.length || ''))}"</td>
+        <td>${item.importQuantity ?? 0}</td>
+        <td><strong>${avail}</strong></td>
+        <td>GHS ${fmt(item.importPrice)}</td>
+        <td>GHS ${fmt(item.totalImportValue)}</td>
+        <td>${esc(item.supplier || 'N/A')}</td>
+        <td><span class="badge ${statusCls}">${statusTxt}</span></td>
+        <td>
+          <button class="trash" data-id="${item.id}"
+            data-name="${esc((item.hairBrand||'') + ' ' + (item.color||'') + ' ' + (item.length||''))}"
+            title="Delete stock">🗑️</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    tbody.querySelectorAll('.trash').forEach(btn => {
+      btn.addEventListener('click', () => handleDelete(btn.dataset.id, btn.dataset.name));
+    });
+  }
+
+  // ── Delete ────────────────────────────────────────────────────
+  async function handleDelete(stockId, productName) {
+    if (!confirm(`Delete stock for "${productName}"?\n\nThis cannot be undone.`)) return;
+    try {
+      await deleteDoc(doc(db, 'warehouse', stockId));
+      await loadWarehouseStock();
+    } catch (err) {
+      alert('Error deleting stock: ' + err.message);
+    }
+  }
+
+  // ── Search ────────────────────────────────────────────────────
+  // ── ALL listeners attached here — called once after auth ──────
+  function attachListeners() {
+
+    // Search
+    document.getElementById('search-stock').addEventListener('input', e => {
+      const q = e.target.value.toLowerCase();
+      renderTable(allStock.filter(i =>
+        (i.hairBrand || '').toLowerCase().includes(q) ||
+        (i.color     || '').toLowerCase().includes(q) ||
+        String(i.length || '').includes(q)            ||
+        (i.supplier  || '').toLowerCase().includes(q)
+      ));
+    });
+
+    // Modal open
+    document.getElementById('openAddStockBtn').addEventListener('click', openModal);
+
+    // Modal close
+    const modal = document.getElementById('stock-modal');
+    const closeModal = () => modal.classList.remove('open');
+    document.getElementById('closeStockBtn').addEventListener('click', closeModal);
+    document.getElementById('cancelStockBtn').addEventListener('click', closeModal);
+    document.getElementById('noProductsCancelBtn').addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+    // Brand change → load colors
+    document.getElementById('stock-brand').addEventListener('change', async function () {
+      const brand     = this.value;
+      const colorSel  = document.getElementById('stock-color');
+      const lengthSel = document.getElementById('stock-length');
+
+      // Reset downstream
+      colorSel.innerHTML  = '<option value="">Loading...</option>';
+      colorSel.disabled   = true;
+      lengthSel.innerHTML = '<option value="">Select color first</option>';
+      lengthSel.disabled  = true;
+      updatePreview();
+
+      if (!brand) {
+        colorSel.innerHTML = '<option value="">Select brand first</option>';
+        return;
+      }
+
+      const res = await getColorsByBrand(brand);
+      const colors = res.success ? res.data : [];
+      colorSel.innerHTML = '<option value="">Select Color</option>';
+      colors.forEach(c => colorSel.innerHTML += `<option value="${esc(c)}">${esc(c)}</option>`);
+      colorSel.disabled = false;
+    });
+
+    // Color change → load lengths
+    document.getElementById('stock-color').addEventListener('change', async function () {
+      const brand     = document.getElementById('stock-brand').value;
+      const color     = this.value;
+      const lengthSel = document.getElementById('stock-length');
+
+      lengthSel.innerHTML = '<option value="">Loading...</option>';
+      lengthSel.disabled  = true;
+      updatePreview();
+
+      if (!brand || !color) {
+        lengthSel.innerHTML = '<option value="">Select color first</option>';
+        return;
+      }
+
+      const res = await getLengthsByBrandAndColor(brand, color);
+      const lengths = res.success ? res.data : [];
+      lengthSel.innerHTML = '<option value="">Select Length</option>';
+      lengths.forEach(l => lengthSel.innerHTML += `<option value="${l}">${l} inches</option>`);
+      lengthSel.disabled = false;
+    });
+
+    // Length change → update preview
+    document.getElementById('stock-length').addEventListener('change', updatePreview);
+
+    // Live total value calc
+    ['stock-quantity', 'stock-price'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        const qty   = parseInt(document.getElementById('stock-quantity').value) || 0;
+        const price = parseFloat(document.getElementById('stock-price').value)  || 0;
+        document.getElementById('total-import-value-calc').value = `GHS ${(qty * price).toFixed(2)}`;
+      });
+    });
+
+    // Form submit
+    document.getElementById('stock-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      document.getElementById('stock-form-error').style.display = 'none';
+
+      const brand  = document.getElementById('stock-brand').value;
+      const color  = document.getElementById('stock-color').value;
+      const length = document.getElementById('stock-length').value;
+      const qty    = parseInt(document.getElementById('stock-quantity').value);
+      const price  = parseFloat(document.getElementById('stock-price').value);
+      const date   = document.getElementById('stock-date').value;
+
+      if (!brand || !color || !length || !qty || !price || !date) {
+        showFormError('Please fill in all required fields.');
+        return;
+      }
+
+      const btn = document.getElementById('save-stock-btn');
+      btn.disabled    = true;
+      btn.textContent = 'Adding Stock...';
+
+      const result = await addWarehouseStock({
+        hairBrand:      brand,
+        color:          color,
+        length:         length,
+        importQuantity: qty,
+        importPrice:    price,
+        supplier:       document.getElementById('stock-supplier').value.trim(),
+        importDate:     date
+      });
+
+      btn.disabled    = false;
+      btn.textContent = 'Add Stock';
+
+      if (result.success) {
+        document.getElementById('stock-modal').classList.remove('open');
+        await loadWarehouseStock();
+      } else {
+        showFormError('Error adding stock: ' + result.error);
+      }
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await logout();
+      window.location.href = 'index.html';
+    });
+  }
+
+  // ── Open modal — fetch brands THEN show form ──────────────────
+  async function openModal() {
+    const modal       = document.getElementById('stock-modal');
+    const loader      = document.getElementById('modal-loader');
+    const form        = document.getElementById('stock-form');
+    const noProducts  = document.getElementById('no-products-msg');
+
+    // Reset form fields
+    document.getElementById('stock-form').reset();
+    document.getElementById('total-import-value-calc').value  = 'GHS 0.00';
+    document.getElementById('stock-form-error').style.display = 'none';
+    document.getElementById('preview-stock-name').textContent = 'Select brand, color, and length';
+    document.getElementById('stock-color').disabled           = true;
+    document.getElementById('stock-length').disabled          = true;
+    document.getElementById('stock-color').innerHTML          = '<option value="">Select brand first</option>';
+    document.getElementById('stock-length').innerHTML         = '<option value="">Select color first</option>';
+    document.getElementById('stock-date').valueAsDate         = new Date();
+
+    // Show modal with loader first — no lag
+    loader.style.display     = 'block';
+    form.style.display       = 'none';
+    noProducts.style.display = 'none';
+    modal.classList.add('open');
+
+    // Now fetch brands in background
+    const res    = await getHairBrands();
+    const brands = res.success ? res.data : [];
+
+    loader.style.display = 'none';
+
+    if (!brands.length) {
+      noProducts.style.display = 'block';
+      return;
+    }
+
+    const brandSel = document.getElementById('stock-brand');
+    brandSel.innerHTML = '<option value="">Select Brand</option>';
+    brands.forEach(b => brandSel.innerHTML += `<option value="${esc(b)}">${esc(b)}</option>`);
+    form.style.display = 'block';
+  }
+
+  // ── Preview label ─────────────────────────────────────────────
+  function updatePreview() {
+    const brand  = document.getElementById('stock-brand').value;
+    const color  = document.getElementById('stock-color').value;
+    const length = document.getElementById('stock-length').value;
+    document.getElementById('preview-stock-name').textContent =
+      brand && color && length
+        ? `${brand} — ${color} — ${length} inches`
+        : 'Select brand, color, and length';
+  }
+
+  function showFormError(msg) {
+    const el = document.getElementById('stock-form-error');
+    el.textContent   = msg;
+    el.style.display = 'block';
+  }
+
+  function fmt(n) {
+    return Number(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function esc(str) {
+    return String(str ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+  }
+
+  init();
+</script>
+</body>
+</html>

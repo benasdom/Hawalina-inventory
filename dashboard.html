@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hawalina Ventures • CEO Portal • Dashboard</title>
+  <style>
+    :root{
+      --bg:#f7f4ff; --panel:#ffffff; --text:#1f1f2a; --muted:#6b6b7a;
+      --primary:#6f4cff; --primary2:#8b6bff; --line:#ece7ff;
+      --shadow: 0 10px 25px rgba(25, 10, 70, .08);
+      --radius:18px;
+      --success:#22c55e;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--text);
+      background: radial-gradient(1200px 600px at 70% 0%, rgba(111,76,255,.22), transparent 55%),
+                  radial-gradient(900px 500px at 0% 30%, rgba(139,107,255,.14), transparent 60%),
+                  var(--bg);
+    }
+    a{color:inherit;text-decoration:none}
+    .app{display:flex;min-height:100vh}
+    .sidebar{width:260px;padding:22px 18px;background:linear-gradient(180deg,#24134f,#1a1036);
+      color:#fff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;
+    }
+    .brand{display:flex;gap:12px;align-items:center;padding:10px 10px 18px}
+    .logo{width:46px;height:46px;border-radius:16px;background:rgba(255,255,255,.12);display:grid;place-items:center}
+    .brand h1{font-size:18px;margin:0;line-height:1.1}
+    .brand p{margin:4px 0 0;color:rgba(255,255,255,.7);font-size:12px}
+    .nav{margin-top:8px;display:flex;flex-direction:column;gap:6px;flex:1}
+    .nav a{padding:10px 12px;border-radius:12px;color:rgba(255,255,255,.86);display:flex;gap:10px;align-items:center}
+    .nav a.active,.nav a:hover{background:rgba(255,255,255,.12);color:#fff}
+    .dot{width:10px;height:10px;border-radius:4px;background:rgba(255,255,255,.35)}
+    .logout-btn{margin-top:auto;padding:10px 12px;border-radius:12px;color:rgba(255,255,255,.7);
+      display:flex;gap:10px;align-items:center;cursor:pointer;border:1px solid rgba(255,255,255,.15);
+      background:transparent;width:100%;font-size:14px;
+    }
+    .logout-btn:hover{background:rgba(255,0,0,.2);color:#fff;border-color:rgba(255,100,100,.3)}
+    .main{flex:1;padding:26px 26px 40px}
+    .topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+    .title h2{margin:0;font-size:28px}
+    .title small{color:var(--muted)}
+    .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+    .chipbar{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{border:1px solid var(--line);background:rgba(255,255,255,.75);padding:8px 12px;border-radius:999px;font-size:12px;cursor:pointer}
+    .chip.active{background:rgba(111,76,255,.14);border-color:rgba(111,76,255,.35)}
+    .datebox{display:flex;gap:8px;align-items:center}
+    input[type="date"]{padding:9px 10px;border-radius:12px;border:1px solid var(--line);background:#fff}
+    .btn{padding:10px 14px;border-radius:12px;border:1px solid transparent;background:var(--primary);color:#fff;cursor:pointer;box-shadow:var(--shadow)}
+    .grid{margin-top:18px;display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:14px}
+    @media (max-width:1150px){.grid{grid-template-columns:repeat(2,minmax(220px,1fr))}}
+    @media (max-width:620px){.grid{grid-template-columns:1fr}.sidebar{display:none}}
+    .card{background:rgba(255,255,255,.82);backdrop-filter: blur(10px);border:1px solid var(--line);border-radius:var(--radius);padding:14px 14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+    .card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#ffb86b,#6f4cff)}
+    .card h4{margin:0 0 6px;font-size:12px;letter-spacing:.02em;color:#3c3c52;text-transform:uppercase}
+    .card .value{font-size:26px;font-weight:800;margin:0 0 6px}
+    .card .hint{font-size:12px;color:var(--muted);margin:0}
+    .sectionRow{margin-top:16px;display:grid;grid-template-columns:1.2fr 1fr;gap:14px}
+    @media (max-width:1150px){.sectionRow{grid-template-columns:1fr}}
+    .panel{background:rgba(255,255,255,.86);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .panelHeader{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+    .panelHeader h3{margin:0;font-size:16px}
+    .panelBody{padding:14px 16px}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    th,td{padding:12px 10px;border-bottom:1px solid var(--line);font-size:13px;text-align:left}
+    th{color:#4b4b63;font-weight:700;background:rgba(111,76,255,.06)}
+    .empty{color:var(--muted);padding:18px 10px;text-align:center}
+    .linkBtn{border:1px solid var(--line);background:#fff;padding:9px 12px;border-radius:12px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">✦</div>
+        <div>
+          <h1>Hawalina Ventures</h1>
+          <p>CEO Portal</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a class="active" href="dashboard.html"><span class="dot"></span>Dashboard</a>
+        <a href="warehouse.html"><span class="dot"></span>Warehouse</a>
+        <a href="products.html"><span class="dot"></span>Products</a>
+        <a href="agents.html"><span class="dot"></span>Agents</a>
+        <a href="distribute.html"><span class="dot"></span>Distribute Stock</a>
+        <a href="sales.html"><span class="dot"></span>All Sales</a>
+        <a href="payments.html"><span class="dot"></span>Payments</a>
+        <a href="stockbalance.html"><span class="dot"></span>Stock Balance</a>
+        <a href="analytics.html"><span class="dot"></span>Analytics</a>
+        <a href="settings.html"><span class="dot"></span>Settings</a>
+      </nav>
+      <button class="logout-btn" id="logoutBtn">⎋ &nbsp;Logout</button>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="title">
+          <h2>CEO Dashboard</h2>
+          <small>Showing: <b id="rangeLabel">7 Days</b></small>
+        </div>
+
+        <div class="filters">
+          <div class="chipbar" id="chips">
+            <button class="chip" data-range="Yesterday">Yesterday</button>
+            <button class="chip active" data-range="7 Days">7 Days</button>
+            <button class="chip" data-range="30 Days">30 Days</button>
+            <button class="chip" data-range="90 Days">90 Days</button>
+            <button class="chip" data-range="This Month">This Month</button>
+            <button class="chip" data-range="This Quarter">This Quarter</button>
+            <button class="chip" data-range="Last Year">Last Year</button>
+            <button class="chip" data-range="All Time">All Time</button>
+          </div>
+
+          <div class="datebox">
+            <span style="font-size:12px;color:var(--muted)">Custom:</span>
+            <input type="date" id="customStart" />
+            <span style="font-size:12px;color:var(--muted)">to</span>
+            <input type="date" id="customEnd" />
+            <button class="btn" id="customFilterBtn">Filter</button>
+          </div>
+        </div>
+      </div>
+
+      <section class="grid">
+        <div class="card">
+          <h4>Total Import Value</h4>
+          <div class="value">GHS <span id="kpiImport">0</span></div>
+          <p class="hint">Unit Import Price × total quantity imported</p>
+        </div>
+        <div class="card">
+          <h4>Total Agent Value</h4>
+          <div class="value">GHS <span id="kpiAgent">0</span></div>
+          <p class="hint">Unit Agent Price × total quantity distributed</p>
+        </div>
+        <div class="card">
+          <h4>Total Selling Value</h4>
+          <div class="value">GHS <span id="kpiSell">0</span></div>
+          <p class="hint">Unit Selling Price × total quantity sold</p>
+        </div>
+        <div class="card">
+          <h4>Total Company Profit</h4>
+          <div class="value">GHS <span id="kpiProfit">0</span></div>
+          <p class="hint">Total Agent Value − Total Import Value</p>
+        </div>
+
+        <div class="card">
+          <h4>Total Agent Commission</h4>
+          <div class="value">GHS <span id="kpiComm">0</span></div>
+          <p class="hint">Total Selling Value − Total Agent Value</p>
+        </div>
+        <div class="card">
+          <h4>Distribution Rate</h4>
+          <div class="value"><span id="kpiRate">0</span>%</div>
+          <p class="hint">(Distributed Quantity ÷ Imported Quantity) × 100%</p>
+        </div>
+        <div class="card">
+          <h4>Active Agents</h4>
+          <div class="value"><span id="kpiActive">0</span></div>
+          <p class="hint">Agents with activity</p>
+        </div>
+        <div class="card">
+          <h4>Top Performing Hair Brand</h4>
+          <div class="value"><span id="kpiTopBrand">—</span></div>
+          <p class="hint">By Agent Value</p>
+        </div>
+      </section>
+
+      <section class="sectionRow">
+        <div class="panel">
+          <div class="panelHeader">
+            <h3>🏆 Top Performing Agents</h3>
+            <select class="linkBtn" id="agentRangeSelect">
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="thisMonth">This Month</option>
+            </select>
+          </div>
+          <div class="panelBody">
+            <table>
+              <thead>
+                <tr>
+                  <th>Agent</th>
+                  <th>Total Agent Value</th>
+                  <th>Total Selling Value</th>
+                  <th>Total Commission</th>
+                </tr>
+              </thead>
+              <tbody id="agentsBody">
+                <tr><td class="empty" colspan="4">No agent activity during this period.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panelHeader">
+            <h3>📦 Top Performing Products</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="linkBtn" id="tabBrand">Hair Brand</button>
+              <button class="linkBtn" id="tabColor">Hair Color</button>
+              <button class="linkBtn">Export Dashboard</button>
+            </div>
+          </div>
+          <div class="panelBody">
+            <table>
+              <thead>
+                <tr>
+                  <th id="prodColLabel">Hair Brand</th>
+                  <th>Total Agent Value</th>
+                </tr>
+              </thead>
+              <tbody id="productsBody">
+                <tr><td class="empty" colspan="2">No distributions during this period.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { requireRole, logout } from './auth.js';
+    import { db } from './firebase-config.js';
+    import { 
+      collection, 
+      getDocs,
+      query,
+      orderBy 
+    } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    // 🔒 Auth protection - redirects to index.html if not CEO
+    requireRole('ceo');
+
+    // State
+    let allWarehouse = [];
+    let allAgents = [];
+    let allDistributions = [];
+    let allSales = [];
+
+    // Active date range (default: last 7 days)
+    let activeRange = { type: 'preset', days: 7 };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadAllData();
+      applyFiltersAndRender();
+      setupEventListeners();
+    });
+
+    // ── Date helpers ──────────────────────────────────────────────
+    function getDateBounds(range) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      let start, end;
+
+      if (range.type === 'custom') {
+        start = new Date(range.start);
+        end = new Date(range.end);
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+      }
+
+      end = new Date(today);
+      end.setHours(23, 59, 59, 999);
+
+      switch (range.label) {
+        case 'Yesterday':
+          start = new Date(today);
+          start.setDate(start.getDate() - 1);
+          end = new Date(start);
+          end.setHours(23, 59, 59, 999);
+          break;
+        case 'This Month':
+          start = new Date(today.getFullYear(), today.getMonth(), 1);
+          break;
+        case 'This Quarter':
+          const q = Math.floor(today.getMonth() / 3);
+          start = new Date(today.getFullYear(), q * 3, 1);
+          break;
+        case 'Last Year':
+          start = new Date(today.getFullYear() - 1, 0, 1);
+          end = new Date(today.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+          break;
+        case 'All Time':
+          return null; // no filter
+        default:
+          // days-based (7, 30, 90)
+          start = new Date(today);
+          start.setDate(start.getDate() - (range.days || 7));
+      }
+
+      return { start, end };
+    }
+
+    function inRange(dateValue, bounds) {
+      if (!bounds) return true; // All Time
+      if (!dateValue) return false;
+      const d = dateValue.toDate ? dateValue.toDate() : new Date(dateValue);
+      return d >= bounds.start && d <= bounds.end;
+    }
+
+    // ── Load all data from Firestore ──────────────────────────────
+    async function loadAllData() {
+      try {
+        const [warehouseSnap, agentsSnap, distSnap, salesSnap] = await Promise.all([
+          getDocs(query(collection(db, 'warehouse'), orderBy('dateAdded', 'desc'))),
+          getDocs(query(collection(db, 'agents'), orderBy('dateCreated', 'desc'))),
+          getDocs(query(collection(db, 'distributions'), orderBy('distributionDate', 'desc'))),
+          getDocs(query(collection(db, 'sales'), orderBy('saleDate', 'desc')))
+        ]);
+
+        allWarehouse    = warehouseSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        allAgents       = agentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        allDistributions = distSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        allSales        = salesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    }
+
+    // ── Apply active range filter and re-render everything ────────
+    function applyFiltersAndRender() {
+      const bounds = getDateBounds(activeRange);
+
+      const filteredDists  = allDistributions.filter(d => inRange(d.distributionDate, bounds));
+      const filteredSales  = allSales.filter(s => inRange(s.saleDate, bounds));
+      const filteredWH     = allWarehouse.filter(w => inRange(w.dateAdded, bounds));
+
+      calculateAndDisplayKPIs(filteredWH, filteredDists, filteredSales);
+      populateTopAgents(filteredDists, filteredSales);
+      populateTopProducts(filteredDists, filteredWH);
+    }
+
+    // ── KPIs ──────────────────────────────────────────────────────
+    function calculateAndDisplayKPIs(warehouse, distributions, sales) {
+      const totalImportValue = warehouse.reduce((sum, item) => {
+        const qty = item.importQuantity || item.availableQuantity || 0;
+        return sum + (qty * (item.importPrice || 0));
+      }, 0);
+
+      const totalAgentValue = distributions.reduce((sum, dist) => {
+        if (dist.items && Array.isArray(dist.items)) {
+          return sum + dist.items.reduce((s, i) => s + ((i.agentPrice || 0) * (i.quantity || 0)), 0);
+        }
+        return sum + (dist.totalAgentPrice || 0);
+      }, 0);
+
+      const totalSellingValue = sales.reduce((sum, sale) => {
+        return sum + (sale.totalSale || (sale.sellingPrice * sale.quantity) || 0);
+      }, 0);
+
+      const totalCompanyProfit   = totalAgentValue - totalImportValue;
+      const totalAgentCommission = totalSellingValue - totalAgentValue;
+
+      const totalImported   = warehouse.reduce((sum, i) => sum + (i.importQuantity || i.availableQuantity || 0), 0);
+      const totalDistributed = warehouse.reduce((sum, i) => sum + (i.distributedQuantity || 0), 0);
+      const distributionRate = totalImported > 0 ? (totalDistributed / totalImported) * 100 : 0;
+
+      const activeAgents = allAgents.filter(a => a.isActive !== false).length;
+
+      const brandValues = {};
+      warehouse.forEach(item => {
+        const brand = item.hairBrand || 'Unknown';
+        const value = (item.distributedQuantity || 0) * (item.agentPrice || 0);
+        brandValues[brand] = (brandValues[brand] || 0) + value;
+      });
+      const topBrand = Object.entries(brandValues).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+
+      document.getElementById('kpiImport').textContent  = totalImportValue.toLocaleString();
+      document.getElementById('kpiAgent').textContent   = totalAgentValue.toLocaleString();
+      document.getElementById('kpiSell').textContent    = totalSellingValue.toLocaleString();
+      document.getElementById('kpiProfit').textContent  = totalCompanyProfit.toLocaleString();
+      document.getElementById('kpiComm').textContent    = totalAgentCommission.toLocaleString();
+      document.getElementById('kpiRate').textContent    = distributionRate.toFixed(1);
+      document.getElementById('kpiActive').textContent  = activeAgents;
+      document.getElementById('kpiTopBrand').textContent = topBrand;
+    }
+
+    // ── Top Agents table ──────────────────────────────────────────
+    function populateTopAgents(distributions, sales) {
+      const tbody = document.getElementById('agentsBody');
+
+      if (allAgents.length === 0) {
+        tbody.innerHTML = '<tr><td class="empty" colspan="4">No agents found.</td></tr>';
+        return;
+      }
+
+      const agentStats = allAgents.map(agent => {
+        const agentDists = distributions.filter(d => d.agentId === agent.id);
+        const agentSales = sales.filter(s => s.agentId === agent.id);
+
+        const totalAgentValue = agentDists.reduce((sum, d) => {
+          if (d.items && Array.isArray(d.items))
+            return sum + d.items.reduce((s, i) => s + ((i.agentPrice || 0) * (i.quantity || 0)), 0);
+          return sum + (d.totalAgentPrice || 0);
+        }, 0);
+
+        const totalSellingValue = agentSales.reduce((sum, s) => sum + (s.totalSale || 0), 0);
+        const totalCommission   = agentSales.reduce((sum, s) => sum + (s.agentCommission || 0), 0);
+
+        return { name: agent.fullName || agent.name || agent.nationalId, id: agent.id, totalAgentValue, totalSellingValue, totalCommission };
+      });
+
+      agentStats.sort((a, b) => b.totalSellingValue - a.totalSellingValue);
+      const top = agentStats.slice(0, 5);
+
+      if (top.every(a => a.totalSellingValue === 0)) {
+        tbody.innerHTML = '<tr><td class="empty" colspan="4">No agent activity during this period.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = top.map(agent => `
+        <tr>
+          <td><strong>${agent.name}</strong><br><small style="color:var(--muted)">${agent.id}</small></td>
+          <td>GHS ${agent.totalAgentValue.toLocaleString()}</td>
+          <td>GHS ${agent.totalSellingValue.toLocaleString()}</td>
+          <td><strong style="color:var(--success)">GHS ${agent.totalCommission.toLocaleString()}</strong></td>
+        </tr>
+      `).join('');
+    }
+
+    // ── Top Products table ────────────────────────────────────────
+    let productView = 'brand'; // 'brand' | 'color'
+
+    function populateTopProducts(distributions, warehouse) {
+      const tbody = document.getElementById('productsBody');
+      document.getElementById('prodColLabel').textContent = productView === 'brand' ? 'Hair Brand' : 'Hair Color';
+
+      if (warehouse.length === 0) {
+        tbody.innerHTML = '<tr><td class="empty" colspan="2">No products found.</td></tr>';
+        return;
+      }
+
+      const groups = {};
+      warehouse.forEach(item => {
+        const key = productView === 'brand' ? (item.hairBrand || 'Unknown') : (item.color || 'Unknown');
+        const value = (item.distributedQuantity || 0) * (item.agentPrice || 0);
+        groups[key] = (groups[key] || 0) + value;
+      });
+
+      const sorted = Object.entries(groups).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+
+      if (sorted.length === 0 || sorted.every(p => p.value === 0)) {
+        tbody.innerHTML = '<tr><td class="empty" colspan="2">No distributions during this period.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = sorted.slice(0, 5).map(p => `
+        <tr>
+          <td><strong>${p.name}</strong></td>
+          <td>GHS ${p.value.toLocaleString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    // ── Event listeners ───────────────────────────────────────────
+    function setupEventListeners() {
+      // Range chips
+      document.querySelectorAll('#chips .chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#chips .chip').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+
+          const label = btn.dataset.range;
+          document.getElementById('rangeLabel').textContent = label;
+
+          const daysMap = { 'Yesterday': 1, '7 Days': 7, '30 Days': 30, '90 Days': 90 };
+          activeRange = daysMap[label]
+            ? { type: 'preset', days: daysMap[label], label }
+            : { type: 'preset', label };
+
+          applyFiltersAndRender();
+        });
+      });
+
+      // Custom date filter
+      document.getElementById('customFilterBtn').addEventListener('click', () => {
+        const start = document.getElementById('customStart').value;
+        const end   = document.getElementById('customEnd').value;
+        if (!start || !end) { alert('Please select both a start and end date.'); return; }
+
+        document.querySelectorAll('#chips .chip').forEach(b => b.classList.remove('active'));
+        document.getElementById('rangeLabel').textContent = `${start} → ${end}`;
+        activeRange = { type: 'custom', start, end };
+        applyFiltersAndRender();
+      });
+
+      // Agents panel range select
+      document.getElementById('agentRangeSelect').addEventListener('change', (e) => {
+        const val = e.target.value;
+        const bounds = val === 'thisMonth'
+          ? getDateBounds({ type: 'preset', label: 'This Month' })
+          : getDateBounds({ type: 'preset', days: parseInt(val) });
+
+        const filteredDists = allDistributions.filter(d => inRange(d.distributionDate, bounds));
+        const filteredSales = allSales.filter(s => inRange(s.saleDate, bounds));
+        populateTopAgents(filteredDists, filteredSales);
+      });
+
+      // Brand / Color tabs
+      document.getElementById('tabBrand').addEventListener('click', () => {
+        productView = 'brand';
+        const bounds = getDateBounds(activeRange);
+        const filteredWH = allWarehouse.filter(w => inRange(w.dateAdded, bounds));
+        const filteredDists = allDistributions.filter(d => inRange(d.distributionDate, bounds));
+        populateTopProducts(filteredDists, filteredWH);
+      });
+
+      document.getElementById('tabColor').addEventListener('click', () => {
+        productView = 'color';
+        const bounds = getDateBounds(activeRange);
+        const filteredWH = allWarehouse.filter(w => inRange(w.dateAdded, bounds));
+        const filteredDists = allDistributions.filter(d => inRange(d.distributionDate, bounds));
+        populateTopProducts(filteredDists, filteredWH);
+      });
+
+      // Logout
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await logout();
+        window.location.href = 'index.html';
+      });
+    }
+  </script>
+</body>
+</html>

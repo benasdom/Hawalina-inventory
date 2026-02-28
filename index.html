@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hawalina Ventures - Hair Inventory System</title>
+    <link rel="stylesheet" href="auth-styles.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card" style="max-width:500px;">
+            <div class="auth-header">
+                <div class="logo">✦</div>
+                <h1>Hawalina Ventures</h1>
+                <p>Hair Inventory Management System</p>
+            </div>
+            
+            <div style="display:grid;gap:20px;padding:30px;">
+                <!-- Only Agent Portal visible to public -->
+                <a href="agent-login.html" class="role-button agent-button">
+                    <div class="role-icon">👤</div>
+                    <div>
+                        <h3>Agent Portal</h3>
+                        <p>Record sales and track commission</p>
+                    </div>
+                </a>
+            </div>
+            
+            <div class="auth-footer" style="text-align:center;margin-top:20px;">
+                <p style="color:#6b7280;font-size:0.9rem;">© 2026 Hawalina Ventures. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        .role-button {
+            display:flex;
+            align-items:center;
+            gap:20px;
+            padding:25px;
+            border:2px solid #e5e7eb;
+            border-radius:12px;
+            text-decoration:none;
+            transition:all 0.3s;
+            background:white;
+        }
+        
+        .role-button:hover {
+            transform:translateY(-2px);
+            box-shadow:0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .agent-button:hover {
+            border-color:#10b981;
+            background:linear-gradient(135deg,rgba(16,185,129,0.05),rgba(5,150,105,0.05));
+        }
+        
+        .role-icon {
+            font-size:3rem;
+            width:80px;
+            height:80px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:linear-gradient(135deg,#f3f4f6,#e5e7eb);
+            border-radius:50%;
+        }
+        
+        .agent-button:hover .role-icon {
+            background:linear-gradient(135deg,#10b981,#059669);
+        }
+        
+        .role-button h3 {
+            margin:0 0 5px 0;
+            font-size:1.3rem;
+            color:#1f2937;
+        }
+        
+        .role-button p {
+            margin:0;
+            color:#6b7280;
+            font-size:0.95rem;
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics • Hawalina Ventures</title>
+  <style>
+    :root{
+      --bg:#f7f4ff;--text:#1f1f2a;--muted:#6b6b7a;--primary:#6f4cff;
+      --line:#ece7ff;--shadow:0 10px 25px rgba(25,10,70,.08);--r:18px;
+      --success:#10b981;--warn:#f59e0b;--info:#3b82f6;--danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 70% 0%,rgba(111,76,255,.22),transparent 55%),
+        radial-gradient(900px 500px at 0% 30%,rgba(139,107,255,.14),transparent 60%),
+        var(--bg);
+    }
+    a{color:inherit;text-decoration:none}
+    .app{display:flex;min-height:100vh}
+
+    /* ── Sidebar ── */
+    .sidebar{width:260px;padding:22px 18px;background:linear-gradient(180deg,#24134f,#1a1036);color:#fff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;}
+    .brand{display:flex;gap:12px;align-items:center;padding:10px 10px 18px}
+    .logo{width:46px;height:46px;border-radius:16px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:18px}
+    .brand h1{font-size:18px;margin:0;line-height:1.1}
+    .brand p{margin:4px 0 0;color:rgba(255,255,255,.7);font-size:12px}
+    .nav{margin-top:10px;display:flex;flex-direction:column;gap:6px;flex:1}
+    .nav a{padding:10px 12px;border-radius:12px;color:rgba(255,255,255,.86);display:flex;gap:10px;align-items:center}
+    .nav a:hover,.nav a.active{background:rgba(255,255,255,.12);color:#fff}
+    .ico{width:18px;height:18px;border-radius:6px;display:inline-grid;place-items:center;background:rgba(255,255,255,.10);font-size:12px}
+    .logout-btn{margin-top:auto;padding:10px 12px;border-radius:12px;color:rgba(255,255,255,.7);display:flex;gap:10px;align-items:center;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:transparent;width:100%;font-size:14px;}
+    .logout-btn:hover{background:rgba(255,0,0,.2);color:#fff}
+
+    /* ── Main ── */
+    .main{flex:1;padding:26px 26px 40px;min-width:0}
+    @media(max-width:620px){.sidebar{display:none}}
+    .pageTitle{margin:0 0 4px;font-size:30px}
+    .pageSub{color:var(--muted);margin:0 0 20px}
+
+    /* ── KPI grid ── */
+    .kpis{display:grid;grid-template-columns:repeat(4,minmax(200px,1fr));gap:14px;margin-bottom:20px}
+    @media(max-width:1150px){.kpis{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:620px){.kpis{grid-template-columns:1fr}}
+    .card{background:rgba(255,255,255,.86);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;display:flex;gap:12px;align-items:flex-start;}
+    .stripe{position:absolute;left:0;top:0;bottom:0;width:5px}
+    .cardIcon{width:46px;height:46px;border-radius:14px;background:rgba(111,76,255,.10);border:1px solid rgba(111,76,255,.18);display:grid;place-items:center;font-size:22px;flex-shrink:0}
+    .cardText{flex:1}
+    .cardTitle{font-size:11px;letter-spacing:.05em;color:#3c3c52;text-transform:uppercase;margin:2px 0 6px;font-weight:800}
+    .cardValue{font-size:24px;font-weight:900;margin:0}
+    .cardHint{margin:4px 0 0;color:var(--muted);font-size:12px}
+    .positive{color:var(--success)}
+    .negative{color:var(--danger)}
+
+    /* ── Layout rows ── */
+    .row2{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:16px}
+    .row2eq{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    @media(max-width:1000px){.row2,.row2eq{grid-template-columns:1fr}}
+
+    /* ── Panel ── */
+    .panel{background:rgba(255,255,255,.86);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+    .panelHead{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:10px}
+    .panelHead h3{margin:0;font-size:16px}
+    .panelBody{padding:16px}
+
+    /* ── Chart canvas ── */
+    canvas{width:100%!important;display:block}
+
+    /* ── Performer cards ── */
+    .performer{padding:14px;border-radius:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+    .performer:last-child{margin-bottom:0}
+    .performer.gold{background:linear-gradient(135deg,rgba(212,175,55,.12),rgba(212,175,55,.05));border-left:4px solid #d4af37}
+    .performer.silver{background:rgba(111,76,255,.05);border-left:4px solid #9ca3af}
+    .performer.bronze{background:rgba(111,76,255,.05);border-left:4px solid #cd7f32}
+    .performerName{font-weight:800;margin:4px 0 0;font-size:14px}
+    .performerVal{font-weight:900;color:var(--primary);font-size:15px}
+    .performerSub{color:var(--muted);font-size:12px}
+
+    /* ── Progress bars ── */
+    .progressItem{margin-bottom:14px}
+    .progressItem:last-child{margin-bottom:0}
+    .progressLabel{display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px}
+    .progressBar{height:10px;border-radius:5px;background:rgba(111,76,255,.08);overflow:hidden}
+    .progressFill{height:100%;border-radius:5px;background:linear-gradient(90deg,#6f4cff,#8b6bff);transition:width .6s ease}
+
+    /* ── Financial summary grid ── */
+    .finGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    @media(max-width:800px){.finGrid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:500px){.finGrid{grid-template-columns:1fr}}
+    .finItem{text-align:center;padding:18px 12px;background:rgba(111,76,255,.05);border-radius:14px;border:1px solid var(--line)}
+    .finLabel{font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;font-weight:700}
+    .finVal{font-size:22px;font-weight:900}
+
+    .empty{color:var(--muted);font-size:13px;text-align:center;padding:20px 0}
+    .loading{color:var(--muted);font-size:13px;text-align:center;padding:30px 0}
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">✦</div>
+      <div><h1>Hawalina Ventures</h1><p>CEO Portal</p></div>
+    </div>
+    <nav class="nav">
+      <a href="dashboard.html"><span class="ico">🧩</span>Dashboard</a>
+      <a href="warehouse.html"><span class="ico">📦</span>Warehouse</a>
+      <a href="products.html"><span class="ico">🧴</span>Products</a>
+      <a href="agents.html"><span class="ico">🧑🏾‍💼</span>Agents</a>
+      <a href="distribute.html"><span class="ico">🚚</span>Distribute Stock</a>
+      <a href="sales.html"><span class="ico">🧾</span>All Sales</a>
+      <a href="payments.html"><span class="ico">💳</span>Payments</a>
+      <a href="stockbalance.html"><span class="ico">📊</span>Stock Balance</a>
+      <a class="active" href="analytics.html"><span class="ico">📈</span>Analytics</a>
+      <a href="settings.html"><span class="ico">⚙️</span>Settings</a>
+    </nav>
+    <button class="logout-btn" id="logoutBtn">⎋ &nbsp;Logout</button>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <h1 class="pageTitle">📈 Business Analytics</h1>
+    <p class="pageSub">Live insights from your Firestore data</p>
+
+    <!-- KPIs -->
+    <div class="kpis">
+      <div class="card">
+        <span class="stripe" style="background:linear-gradient(180deg,#34d399,#10b981)"></span>
+        <div class="cardIcon">💰</div>
+        <div class="cardText">
+          <div class="cardTitle">Total Revenue</div>
+          <p class="cardValue">GHS <span id="kpiRevenue">—</span></p>
+          <p class="cardHint" id="kpiRevenueHint">Total selling price from all sales</p>
+        </div>
+      </div>
+      <div class="card">
+        <span class="stripe" style="background:linear-gradient(180deg,#60a5fa,#3b82f6)"></span>
+        <div class="cardIcon">📊</div>
+        <div class="cardText">
+          <div class="cardTitle">Total Commission</div>
+          <p class="cardValue">GHS <span id="kpiCommission">—</span></p>
+          <p class="cardHint" id="kpiMarginHint">Agent commission from all sales</p>
+        </div>
+      </div>
+      <div class="card">
+        <span class="stripe" style="background:linear-gradient(180deg,#fbbf24,#f59e0b)"></span>
+        <div class="cardIcon">💵</div>
+        <div class="cardText">
+          <div class="cardTitle">Total Payments</div>
+          <p class="cardValue">GHS <span id="kpiPayments">—</span></p>
+          <p class="cardHint">Collected from agents</p>
+        </div>
+      </div>
+      <div class="card">
+        <span class="stripe" style="background:linear-gradient(180deg,#ffb86b,#6f4cff)"></span>
+        <div class="cardIcon">📦</div>
+        <div class="cardText">
+          <div class="cardTitle">Units Sold</div>
+          <p class="cardValue"><span id="kpiUnits">—</span></p>
+          <p class="cardHint">Total quantity sold by all agents</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revenue chart + Top performers -->
+    <div class="row2">
+      <div class="panel">
+        <div class="panelHead">
+          <h3>📊 Monthly Revenue Trend</h3>
+          <select id="chartPeriod" style="padding:6px 10px;border:1px solid var(--line);border-radius:10px;font-size:13px;outline:none">
+            <option value="6">Last 6 Months</option>
+            <option value="12">Last 12 Months</option>
+          </select>
+        </div>
+        <div class="panelBody">
+          <canvas id="revenueChart" height="220"></canvas>
+          <p class="loading" id="chartLoading">Loading chart...</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panelHead"><h3>🏆 Top Performers</h3></div>
+        <div class="panelBody" id="topPerformers">
+          <p class="loading">Loading...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sales by product + Outstanding balance -->
+    <div class="row2eq">
+      <div class="panel">
+        <div class="panelHead"><h3>📦 Top Products by Units Sold</h3></div>
+        <div class="panelBody" id="topProducts">
+          <p class="loading">Loading...</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panelHead"><h3>💳 Agent Balance Overview</h3></div>
+        <div class="panelBody" id="balanceOverview">
+          <p class="loading">Loading...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Financial summary -->
+    <div class="panel">
+      <div class="panelHead"><h3>📋 Financial Summary</h3></div>
+      <div class="panelBody">
+        <div class="finGrid">
+          <div class="finItem">
+            <div class="finLabel">Total Agent Price (Distributed)</div>
+            <div class="finVal" style="color:var(--primary)">GHS <span id="finDistributed">—</span></div>
+          </div>
+          <div class="finItem">
+            <div class="finLabel">Sales Revenue</div>
+            <div class="finVal" style="color:var(--success)">GHS <span id="finRevenue">—</span></div>
+          </div>
+          <div class="finItem">
+            <div class="finLabel">Payments Received</div>
+            <div class="finVal" style="color:var(--info)">GHS <span id="finPayments">—</span></div>
+          </div>
+          <div class="finItem">
+            <div class="finLabel">Total Outstanding</div>
+            <div class="finVal" style="color:var(--warn)">GHS <span id="finOutstanding">—</span></div>
+          </div>
+          <div class="finItem">
+            <div class="finLabel">Total Commission Earned</div>
+            <div class="finVal" style="color:var(--success)">GHS <span id="finCommission">—</span></div>
+          </div>
+          <div class="finItem">
+            <div class="finLabel">Active Agents</div>
+            <div class="finVal" style="color:var(--primary)"><span id="finActiveAgents">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<!-- anlyt2k6 -->
+
+<script type="module">
+  import { requireRole, logout } from './auth.js';
+  import { getSales, getPayments, getAllAgents, getDistributions } from './firestore-db.js';
+
+  let salesData = [], paymentsData = [], agentsData = [], distData = [];
+
+  // ── Auth ──────────────────────────────────────────────────────
+  async function init() {
+    const allowed = await requireRole('ceo');
+    if (!allowed) return;
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await logout(); window.location.href = 'index.html';
+    });
+    await loadAll();
+  }
+
+  // ── Load all data in parallel ────────────────────────────────
+  async function loadAll() {
+    const [sRes, pRes, aRes, dRes] = await Promise.all([
+      getSales(), getPayments(), getAllAgents(), getDistributions()
+    ]);
+    salesData    = sRes.success ? sRes.data : [];
+    paymentsData = pRes.success ? pRes.data : [];
+    agentsData   = aRes.success ? aRes.data : [];
+    distData     = dRes.success ? dRes.data : [];
+
+    renderKPIs();
+    renderChart(6);
+    renderTopPerformers();
+    renderTopProducts();
+    renderBalanceOverview();
+    renderFinancialSummary();
+  }
+
+  // ── KPIs ──────────────────────────────────────────────────────
+  function renderKPIs() {
+    const revenue    = salesData.reduce((s, d) => s + (d.totalSellingPrice || 0), 0);
+    const commission = salesData.reduce((s, d) => s + (d.agentCommission   || 0), 0);
+    const payments   = paymentsData.reduce((s, d) => s + (d.amount         || 0), 0);
+    const units      = salesData.reduce((s, d) => s + (d.quantity          || 0), 0);
+    const margin     = revenue > 0 ? ((commission / revenue) * 100).toFixed(1) : 0;
+
+    document.getElementById('kpiRevenue').textContent    = fmt(revenue);
+    document.getElementById('kpiCommission').textContent = fmt(commission);
+    document.getElementById('kpiPayments').textContent   = fmt(payments);
+    document.getElementById('kpiUnits').textContent      = units.toLocaleString();
+    document.getElementById('kpiMarginHint').textContent = `${margin}% commission margin`;
+  }
+
+  // ── Revenue chart ─────────────────────────────────────────────
+  function renderChart(months) {
+    document.getElementById('chartLoading').style.display = 'none';
+    const canvas = document.getElementById('revenueChart');
+    const ctx    = canvas.getContext('2d');
+
+    // Build monthly buckets
+    const now     = new Date();
+    const buckets = [];
+    for (let i = months - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      buckets.push({
+        label: d.toLocaleString('default', { month: 'short' }),
+        year:  d.getFullYear(),
+        month: d.getMonth(),
+        rev:   0,
+        comm:  0
+      });
+    }
+
+    salesData.forEach(s => {
+      const d = toDate(s.saleDate);
+      if (!d) return;
+      const b = buckets.find(b => b.year === d.getFullYear() && b.month === d.getMonth());
+      if (b) { b.rev += s.totalSellingPrice || 0; b.comm += s.agentCommission || 0; }
+    });
+
+    // Draw
+    canvas.width  = canvas.offsetWidth || 500;
+    canvas.height = 220;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const padL = 50, padR = 10, padT = 30, padB = 30;
+    const W = canvas.width - padL - padR;
+    const H = canvas.height - padT - padB;
+    const maxVal = Math.max(...buckets.map(b => b.rev), 1);
+    const barW   = (W / buckets.length) * 0.55;
+    const gap    = W / buckets.length;
+
+    // Y gridlines
+    ctx.strokeStyle = 'rgba(111,76,255,.08)';
+    ctx.lineWidth   = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = padT + H - (H / 4) * i;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + W, y); ctx.stroke();
+      ctx.fillStyle = '#9ca3af'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText('GHS ' + fmtShort((maxVal / 4) * i), padL - 4, y + 4);
+    }
+
+    // Bars
+    buckets.forEach((b, i) => {
+      const x      = padL + gap * i + gap * 0.2;
+      const height = (b.rev / maxVal) * H;
+      const y      = padT + H - height;
+
+      const grad = ctx.createLinearGradient(x, y, x, padT + H);
+      grad.addColorStop(0, '#6f4cff');
+      grad.addColorStop(1, 'rgba(111,76,255,.35)');
+      ctx.fillStyle = grad;
+
+      // Rounded top
+      const r = 5;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + barW - r, y);
+      ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+      ctx.lineTo(x + barW, padT + H);
+      ctx.lineTo(x, padT + H);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.fill();
+
+      // Commission dot
+      if (b.comm > 0) {
+        const cy = padT + H - (b.comm / maxVal) * H;
+        ctx.beginPath();
+        ctx.arc(x + barW / 2, cy, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#10b981';
+        ctx.fill();
+      }
+
+      // Label
+      ctx.fillStyle = '#6b7280'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(b.label, x + barW / 2, padT + H + 18);
+
+      // Value
+      if (b.rev > 0) {
+        ctx.fillStyle = '#6f4cff'; ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(fmtShort(b.rev), x + barW / 2, y - 6);
+      }
+    });
+
+    // Legend
+    ctx.fillStyle = '#6f4cff'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillRect(padL, 8, 10, 10); ctx.fillText('Revenue', padL + 14, 17);
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath(); ctx.arc(padL + 85, 13, 5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#10b981'; ctx.fillText('Commission', padL + 94, 17);
+  }
+
+  document.getElementById('chartPeriod').addEventListener('change', function() {
+    renderChart(parseInt(this.value));
+  });
+
+  // ── Top performers ────────────────────────────────────────────
+  function renderTopPerformers() {
+    const medals = ['🥇', '🥈', '🥉'];
+    const cls    = ['gold', 'silver', 'bronze'];
+
+    // Sum commission per agent from sales
+    const map = {};
+    salesData.forEach(s => {
+      if (!s.agentId) return;
+      if (!map[s.agentId]) map[s.agentId] = { name: s.agentName || s.agentId, comm: 0, sales: 0 };
+      map[s.agentId].comm  += s.agentCommission || 0;
+      map[s.agentId].sales += 1;
+    });
+
+    const sorted = Object.values(map).sort((a, b) => b.comm - a.comm).slice(0, 3);
+    const el = document.getElementById('topPerformers');
+
+    if (!sorted.length) {
+      el.innerHTML = '<p class="empty">No sales data yet.</p>';
+      return;
+    }
+
+    el.innerHTML = sorted.map((p, i) => `
+      <div class="performer ${cls[i] || ''}">
+        <div>
+          <div style="font-size:1.4rem">${medals[i] || '🏅'}</div>
+          <div class="performerName">${esc(p.name)}</div>
+          <div class="performerSub">${p.sales} sale${p.sales !== 1 ? 's' : ''}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="performerVal">GHS ${fmt(p.comm)}</div>
+          <div class="performerSub">commission</div>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── Top products by units sold ────────────────────────────────
+  function renderTopProducts() {
+    const map = {};
+    salesData.forEach(s => {
+      const key = `${s.hairBrand || s.brand || '?'} ${s.length || '?'}"`;
+      map[key] = (map[key] || 0) + (s.quantity || 0);
+    });
+
+    const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const el     = document.getElementById('topProducts');
+    const maxQ   = sorted[0]?.[1] || 1;
+
+    if (!sorted.length) {
+      el.innerHTML = '<p class="empty">No sales data yet.</p>';
+      return;
+    }
+
+    el.innerHTML = sorted.map(([name, qty]) => `
+      <div class="progressItem">
+        <div class="progressLabel">
+          <span>${esc(name)}</span>
+          <strong>${qty} units</strong>
+        </div>
+        <div class="progressBar">
+          <div class="progressFill" style="width:${Math.round((qty/maxQ)*100)}%"></div>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── Agent balance overview ────────────────────────────────────
+  function renderBalanceOverview() {
+    const totalOwed  = agentsData.reduce((s, a) => s + (a.totalOwed  || 0), 0);
+    const totalPaid  = agentsData.reduce((s, a) => s + (a.totalPaid  || 0), 0);
+    const totalComm  = agentsData.reduce((s, a) => s + (a.totalCommission || 0), 0);
+    const collRate   = totalOwed > 0 ? ((totalPaid / totalOwed) * 100).toFixed(1) : 0;
+
+    const el = document.getElementById('balanceOverview');
+    el.innerHTML = `
+      <div class="progressItem">
+        <div class="progressLabel"><span>Total Owed by Agents</span><strong>GHS ${fmt(totalOwed)}</strong></div>
+        <div class="progressBar"><div class="progressFill" style="width:100%;background:linear-gradient(90deg,#ef4444,#f87171)"></div></div>
+      </div>
+      <div class="progressItem">
+        <div class="progressLabel"><span>Total Paid by Agents</span><strong>GHS ${fmt(totalPaid)}</strong></div>
+        <div class="progressBar">
+          <div class="progressFill" style="width:${Math.min(100, totalOwed > 0 ? (totalPaid/totalOwed)*100 : 0).toFixed(1)}%;background:linear-gradient(90deg,#10b981,#34d399)"></div>
+        </div>
+      </div>
+      <div class="progressItem">
+        <div class="progressLabel"><span>Total Commission Earned</span><strong>GHS ${fmt(totalComm)}</strong></div>
+        <div class="progressBar"><div class="progressFill" style="width:${Math.min(100, totalOwed > 0 ? (totalComm/totalOwed)*100 : 100).toFixed(1)}%;background:linear-gradient(90deg,#3b82f6,#60a5fa)"></div></div>
+      </div>
+      <div style="margin-top:16px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:700;text-transform:uppercase">Collection Rate</div>
+        <div style="font-size:32px;font-weight:900;color:var(--success)">${collRate}%</div>
+        <div style="font-size:12px;color:var(--muted)">GHS ${fmt(totalPaid)} collected of GHS ${fmt(totalOwed)} owed</div>
+      </div>`;
+  }
+
+  // ── Financial summary ─────────────────────────────────────────
+  function renderFinancialSummary() {
+    const totalDistributed = distData.reduce((s, d) => s + (d.totalAgentPrice || 0), 0);
+    const totalRevenue     = salesData.reduce((s, d) => s + (d.totalSellingPrice || 0), 0);
+    const totalPayments    = paymentsData.reduce((s, d) => s + (d.amount || 0), 0);
+    const totalOutstanding = agentsData.reduce((s, a) => s + Math.max(0, a.totalOwed || 0), 0);
+    const totalCommission  = salesData.reduce((s, d) => s + (d.agentCommission || 0), 0);
+    const activeAgents     = agentsData.filter(a => a.isActive !== false).length;
+
+    document.getElementById('finDistributed').textContent  = fmt(totalDistributed);
+    document.getElementById('finRevenue').textContent      = fmt(totalRevenue);
+    document.getElementById('finPayments').textContent     = fmt(totalPayments);
+    document.getElementById('finOutstanding').textContent  = fmt(totalOutstanding);
+    document.getElementById('finCommission').textContent   = fmt(totalCommission);
+    document.getElementById('finActiveAgents').textContent = activeAgents;
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────
+  function toDate(val) {
+    if (!val) return null;
+    if (val.toDate)  return val.toDate();
+    if (val.seconds) return new Date(val.seconds * 1000);
+    return new Date(val);
+  }
+  function fmt(n) {
+    return Number(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtShort(n) {
+    n = Number(n || 0);
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+    return n.toFixed(0);
+  }
+  function esc(str) {
+    return String(str ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+  }
+
+  init();
+</script>
+</body>
+</html>

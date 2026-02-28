@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Reports - Hawalina Ventures</title>
+<link rel="stylesheet" href="ceo-styles.css">
+</head>
+<body>
+
+    <script type="module">
+        // SECURITY: Auth check - Redirect if not authenticated as CEO
+        import { isAuthenticated, getUserRole } from './auth.js';
+        
+        // Check authentication immediately
+        const checkAuth = () => {
+            const isAuth = sessionStorage.getItem('userRole') === 'ceo';
+            const hasSession = sessionStorage.getItem('userId');
+            
+            if (!isAuth || !hasSession) {
+                // Not authenticated - redirect to 404
+                window.location.replace('404.html');
+                return false;
+            }
+            return true;
+        };
+        
+        // Run check immediately
+        if (!checkAuth()) {
+            throw new Error('Unauthorized access');
+        }
+        
+        // Re-check every 30 seconds
+        setInterval(checkAuth, 30000);
+    </script>
+
+<div class="sidebar">
+<div class="logo-section"><div class="logo-icon">✦</div><h2>Hawalina Ventures</h2><p class="user-role">CEO Portal</p></div>
+<nav class="main-nav">
+<a href="dash4m8p.html" class="nav-link"><span class="nav-icon">📊</span><span>Dashboard</span></a>
+<a href="wh9r2t6.html" class="nav-link"><span class="nav-icon">🏭</span><span>Warehouse</span></a>
+<a href="prod3x7n.html" class="nav-link"><span class="nav-icon">📦</span><span>Products</span></a>
+<a href="agt5h2j9.html" class="nav-link"><span class="nav-icon">👥</span><span>Agents</span></a>
+<a href="dist8c4b.html" class="nav-link"><span class="nav-icon">🚚</span><span>Distribute Stock</span></a>
+<a href="sale1f6k.html" class="nav-link"><span class="nav-icon">💰</span><span>All Sales</span></a>
+<a href="pay4t8r2.html" class="nav-link"><span class="nav-icon">💵</span><span>Payments</span></a>
+<a href="stk7w3e9.html" class="nav-link"><span class="nav-icon">📋</span><span>Stock Balance</span></a>
+<a href="anlyt2k6.html" class="nav-link"><span class="nav-icon">📈</span><span>Analytics</span></a>
+<a href="rpt9i5o3.html" class="nav-link active"><span class="nav-icon">📑</span><span>Reports</span></a>
+</nav>
+<div class="sidebar-footer"><div class="user-info"><div class="user-avatar">👨‍💼</div><div><p class="user-name">CEO</p></div></div><button class="logout-btn" onclick="logout()">🚪 Logout</button></div>
+</div>
+
+<div class="main-content">
+<h1 class="page-title">📑 Business Reports</h1>
+<p class="page-subtitle">Daily, Weekly, Monthly, and Annual reports with drill-down</p>
+
+<div class="card" style="margin-top:30px;max-width:900px;">
+<div class="card-header"><h3>Generate Report</h3></div>
+<div class="card-body">
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:15px;">
+<div>
+<label style="font-weight:600;display:block;margin-bottom:8px;">Report Type</label>
+<select id="reportType" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:8px;font-size:1rem;">
+<option value="daily">Daily Report</option>
+<option value="weekly">Weekly Report</option>
+<option value="monthly">Monthly Report</option>
+<option value="annual">Annual Report</option>
+</select>
+</div>
+<div>
+<label style="font-weight:600;display:block;margin-bottom:8px;">Start Date</label>
+<input type="date" id="startDate" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:8px;">
+</div>
+<div>
+<label style="font-weight:600;display:block;margin-bottom:8px;">End Date</label>
+<input type="date" id="endDate" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:8px;">
+</div>
+<div>
+<label style="font-weight:600;display:block;margin-bottom:8px;">&nbsp;</label>
+<button onclick="generateReport()" style="width:100%;padding:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Generate</button>
+</div>
+</div>
+</div>
+</div>
+
+<div id="reportOutput" style="display:none;margin-top:30px;">
+<div class="card">
+<div class="card-header">
+<h3 id="reportTitle">Report</h3>
+<div style="display:flex;gap:10px;">
+<button onclick="printReport()" style="padding:8px 16px;background:var(--secondary);color:white;border:none;border-radius:6px;cursor:pointer;">🖨️ Print</button>
+<button onclick="exportReport()" style="padding:8px 16px;background:var(--accent);color:white;border:none;border-radius:6px;cursor:pointer;">📥 Export CSV</button>
+</div>
+</div>
+<div class="card-body">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:30px;">
+<div style="text-align:center;padding:20px;background:linear-gradient(135deg,rgba(102,126,234,0.1),rgba(102,126,234,0.05));border-radius:10px;">
+<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;">Total Sales</div>
+<div style="font-size:2rem;font-weight:700;color:var(--primary);" id="reportSales">GHS 0</div>
+</div>
+<div style="text-align:center;padding:20px;background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(16,185,129,0.05));border-radius:10px;">
+<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;">Transactions</div>
+<div style="font-size:2rem;font-weight:700;color:var(--success);" id="reportCount">0</div>
+</div>
+<div style="text-align:center;padding:20px;background:linear-gradient(135deg,rgba(212,175,55,0.1),rgba(212,175,55,0.05));border-radius:10px;">
+<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;">Commission</div>
+<div style="font-size:2rem;font-weight:700;color:var(--accent);" id="reportCommission">GHS 0</div>
+</div>
+<div style="text-align:center;padding:20px;background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(245,158,11,0.05));border-radius:10px;">
+<div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;">Avg Sale</div>
+<div style="font-size:2rem;font-weight:700;color:var(--warning);" id="reportAvg">GHS 0</div>
+</div>
+</div>
+
+<h4 style="margin-bottom:15px;">📊 Sales Breakdown</h4>
+<table class="data-table" style="width:100%;margin-bottom:30px;">
+<thead>
+<tr><th>Agent</th><th>Sales Count</th><th>Total Revenue</th><th>Commission</th><th>Avg Sale</th></tr>
+</thead>
+<tbody id="reportTable">
+<tr><td>Sarah Mensah</td><td>12</td><td>GHS 10,200</td><td>GHS 2,800</td><td>GHS 850</td></tr>
+<tr><td>Kwame Osei</td><td>8</td><td>GHS 6,800</td><td>GHS 1,900</td><td>GHS 850</td></tr>
+<tr><td>Ama Adjei</td><td>6</td><td>GHS 5,100</td><td>GHS 1,400</td><td>GHS 850</td></tr>
+</tbody>
+</table>
+
+<h4 style="margin-bottom:15px;">📦 Product Performance</h4>
+<table class="data-table" style="width:100%;">
+<thead>
+<tr><th>Product</th><th>Units Sold</th><th>Revenue</th><th>% of Total</th></tr>
+</thead>
+<tbody>
+<tr><td>Brazilian 18"</td><td>15</td><td>GHS 8,250</td><td>37.4%</td></tr>
+<tr><td>Peruvian 20"</td><td>8</td><td>GHS 5,600</td><td>25.4%</td></tr>
+<tr><td>Malaysian 22"</td><td>3</td><td>GHS 2,550</td><td>11.6%</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="card" style="margin-top:30px;">
+<div class="card-header"><h3>📅 Quick Reports</h3></div>
+<div class="card-body">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px;">
+<button onclick="quickReport('today')" style="padding:20px;background:var(--bg-main);border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.3s;text-align:center;font-weight:600;">
+<div style="font-size:2rem;margin-bottom:8px;">📅</div>
+<div>Today's Report</div>
+</button>
+<button onclick="quickReport('week')" style="padding:20px;background:var(--bg-main);border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.3s;text-align:center;font-weight:600;">
+<div style="font-size:2rem;margin-bottom:8px;">📊</div>
+<div>This Week</div>
+</button>
+<button onclick="quickReport('month')" style="padding:20px;background:var(--bg-main);border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.3s;text-align:center;font-weight:600;">
+<div style="font-size:2rem;margin-bottom:8px;">📈</div>
+<div>This Month</div>
+</button>
+<button onclick="quickReport('year')" style="padding:20px;background:var(--bg-main);border:2px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.3s;text-align:center;font-weight:600;">
+<div style="font-size:2rem;margin-bottom:8px;">📑</div>
+<div>This Year</div>
+</button>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+if(sessionStorage.getItem('userRole')!=='ceo')window.location.href='index.html';
+window.logout=()=>{if(confirm('Logout?')){sessionStorage.clear();window.location.href='index.html';}};
+
+const today=new Date();
+document.getElementById('startDate').valueAsDate=new Date(today.getFullYear(),today.getMonth(),1);
+document.getElementById('endDate').valueAsDate=today;
+
+window.generateReport=()=>{
+const type=document.getElementById('reportType').value;
+const start=document.getElementById('startDate').value;
+const end=document.getElementById('endDate').value;
+
+document.getElementById('reportTitle').textContent=type.charAt(0).toUpperCase()+type.slice(1)+' Report ('+start+' to '+end+')';
+document.getElementById('reportSales').textContent='GHS 22,100';
+document.getElementById('reportCount').textContent='26';
+document.getElementById('reportCommission').textContent='GHS 6,100';
+document.getElementById('reportAvg').textContent='GHS 850';
+
+document.getElementById('reportOutput').style.display='block';
+document.getElementById('reportOutput').scrollIntoView({behavior:'smooth'});
+};
+
+window.quickReport=(period)=>{
+const type={'today':'daily','week':'weekly','month':'monthly','year':'annual'}[period];
+document.getElementById('reportType').value=type;
+const today=new Date();
+if(period==='today'){
+document.getElementById('startDate').valueAsDate=today;
+document.getElementById('endDate').valueAsDate=today;
+}else if(period==='week'){
+const weekStart=new Date(today);
+weekStart.setDate(today.getDate()-today.getDay());
+document.getElementById('startDate').valueAsDate=weekStart;
+document.getElementById('endDate').valueAsDate=today;
+}else if(period==='month'){
+document.getElementById('startDate').valueAsDate=new Date(today.getFullYear(),today.getMonth(),1);
+document.getElementById('endDate').valueAsDate=today;
+}else{
+document.getElementById('startDate').valueAsDate=new Date(today.getFullYear(),0,1);
+document.getElementById('endDate').valueAsDate=today;
+}
+generateReport();
+};
+
+window.printReport=()=>{
+window.print();
+};
+
+window.exportReport=()=>{
+alert('Export to CSV functionality - will download report as CSV file');
+};
+</script>
+</body>
+</html>

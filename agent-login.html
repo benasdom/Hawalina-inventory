@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Login - Hawalina Ventures</title>
+    <link rel="stylesheet" href="auth-styles.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="logo">✦</div>
+                <h1>Agent Portal</h1>
+                <p>Login with your National ID</p>
+            </div>
+            
+            <form id="agentLoginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="nationalId">
+                        <span class="label-icon">🪪</span>
+                        National ID Card Number
+                    </label>
+                    <input 
+                        type="text" 
+                        id="nationalId" 
+                        placeholder="GHA-123456789-0"
+                        required
+                        autocomplete="off"
+                        pattern="GHA-[0-9]{9}-[0-9]"
+                        title="Format: GHA-123456789-0"
+                    >
+                    <small class="input-hint">Format: GHA-XXXXXXXXX-X</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">
+                        <span class="label-icon">🔒</span>
+                        Password
+                    </label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        placeholder="Enter your password"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+                
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="remember">
+                        <span>Remember me</span>
+                    </label>
+                    <a href="#" class="forgot-link">Forgot password?</a>
+                </div>
+                
+                <button type="submit" class="btn-primary" id="loginBtn">
+                    <span id="btnText">Login to Portal</span>
+                    <span id="btnLoader" class="loader" style="display: none;"></span>
+                </button>
+                
+                <div id="errorMessage" class="error-message" style="display: none;"></div>
+            </form>
+            
+            <div class="auth-footer">
+                <a href="index.html" class="back-link">← Back to home</a>
+            </div>
+            
+            <div class="info-box">
+                <p><strong>First time user?</strong></p>
+                <p>Contact your administrator to create your account using your National ID Card number.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { loginAgent } from './auth.js';
+
+        // Check if already logged in
+        if (sessionStorage.getItem('userRole') === 'agent') {
+            window.location.href = 'agent-dashboard.html';
+        }
+
+        // National ID format helper
+        document.getElementById('nationalId').addEventListener('input', (e) => {
+            let value = e.target.value.toUpperCase().replace(/[^0-9GHA-]/g, '');
+            
+            if (!value.startsWith('GHA-')) {
+                if (value.length > 0 && !value.startsWith('G')) {
+                    value = 'GHA-' + value;
+                }
+            }
+            
+            e.target.value = value;
+        });
+        
+        // Login form handler
+        document.getElementById('agentLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const nationalId = document.getElementById('nationalId').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const btnText = document.getElementById('btnText');
+            const btnLoader = document.getElementById('btnLoader');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // Show loader
+            btnText.style.display = 'none';
+            btnLoader.style.display = 'inline-block';
+            loginBtn.disabled = true;
+            errorMessage.style.display = 'none';
+
+            const result = await loginAgent(nationalId, password);
+
+            if (result.success) {
+                window.location.href = 'agent-dashboard.html';
+            } else {
+                errorMessage.textContent = 'Invalid National ID or password. Please check your credentials.';
+                errorMessage.style.display = 'block';
+                
+                btnText.style.display = 'inline-block';
+                btnLoader.style.display = 'none';
+                loginBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

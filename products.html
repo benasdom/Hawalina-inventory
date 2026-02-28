@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Product Catalog • Hawalina Ventures</title>
+  <style>
+    :root{--bg:#f7f4ff;--text:#1f1f2a;--muted:#6b6b7a;--primary:#6f4cff;--line:#ece7ff;--shadow:0 10px 25px rgba(25,10,70,.08);--r:18px;--danger:#ef4444}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;color:var(--text);
+      background:radial-gradient(1200px 600px at 70% 0%,rgba(111,76,255,.22),transparent 55%),var(--bg);}
+    .app{display:flex;min-height:100vh}
+    .sidebar{width:260px;padding:22px 18px;background:linear-gradient(180deg,#24134f,#1a1036);color:#fff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;}
+    .brand{display:flex;gap:12px;align-items:center;padding:10px 10px 18px}
+    .logo{width:46px;height:46px;border-radius:16px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:18px}
+    .brand-text{font-weight:800}
+    .brand-sub{color:rgba(255,255,255,.7);font-size:12px}
+    .nav{margin-top:8px;display:flex;flex-direction:column;gap:6px;flex:1}
+    .nav a{padding:10px 12px;border-radius:12px;color:rgba(255,255,255,.86);display:flex;gap:10px;align-items:center;text-decoration:none}
+    .nav a.active,.nav a:hover{background:rgba(255,255,255,.12);color:#fff}
+    .dot{width:10px;height:10px;border-radius:4px;background:rgba(255,255,255,.35);flex-shrink:0}
+    .logout-btn{margin-top:auto;padding:10px 12px;border-radius:12px;color:rgba(255,255,255,.7);display:flex;gap:10px;align-items:center;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:transparent;width:100%;font-size:14px;}
+    .logout-btn:hover{background:rgba(255,0,0,.2);color:#fff}
+    .main{flex:1;padding:26px 26px 40px}
+    .top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start}
+    h2{margin:0;font-size:28px}
+    small{color:var(--muted)}
+    .btn{padding:10px 14px;border-radius:12px;border:1px solid transparent;background:var(--primary);color:#fff;cursor:pointer;box-shadow:var(--shadow);font-weight:600;display:inline-flex;align-items:center;gap:6px}
+    .btn:active{transform:translateY(1px)}
+    .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--text);box-shadow:none}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .grid{margin-top:18px;display:grid;grid-template-columns:repeat(4,minmax(200px,1fr));gap:14px}
+    @media(max-width:1150px){.grid{grid-template-columns:repeat(2,minmax(200px,1fr))}}
+    @media(max-width:620px){.grid{grid-template-columns:1fr}.sidebar{display:none}}
+    .card{background:rgba(255,255,255,.86);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+    .card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#ffb86b,#6f4cff)}
+    .card h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;color:#3c3c52;font-weight:700}
+    .value{font-size:26px;font-weight:800;margin:0 0 6px}
+    .hint{margin:0;color:var(--muted);font-size:12px}
+    .panel{margin-top:14px;background:rgba(255,255,255,.86);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+    .panelHeader{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap}
+    .panelHeader h3{margin:0;font-size:16px}
+    .search{padding:10px 12px;border-radius:12px;border:1px solid var(--line);min-width:240px;outline:none}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    th,td{padding:12px 10px;border-bottom:1px solid var(--line);font-size:13px;text-align:left;vertical-align:middle}
+    th{background:rgba(111,76,255,.06);color:#4b4b63;font-weight:800}
+    tbody tr:hover td{background:rgba(111,76,255,.03)}
+    .actionBtns{display:flex;gap:6px}
+    .editBtn{height:32px;padding:0 10px;border-radius:9px;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:12px;font-weight:700}
+    .editBtn:hover{background:rgba(111,76,255,.08);border-color:rgba(111,76,255,.35)}
+    .delBtn{height:32px;width:32px;border-radius:9px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.07);cursor:pointer;font-size:14px;display:grid;place-items:center}
+    .delBtn:hover{border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.15)}
+    .modal{position:fixed;inset:0;background:rgba(15,10,40,.35);display:none;align-items:center;justify-content:center;padding:18px;z-index:100}
+    .modal.open{display:flex}
+    .box{width:min(820px,95vw);background:#fff;border-radius:18px;box-shadow:var(--shadow);border:1px solid var(--line);overflow:hidden}
+    .boxHead{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+    .boxHead h4{margin:0;font-size:18px}
+    .boxBody{padding:16px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:680px){.grid2{grid-template-columns:1fr}}
+    .field label{display:block;font-size:12px;color:#3c3c52;margin:0 0 6px;font-weight:700}
+    .req{color:var(--danger);margin-left:2px}
+    .field input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;outline:none;font-size:14px}
+    .field input:focus{border-color:var(--primary)}
+    .form-error{display:none;margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#b91c1c;font-size:13px}
+    .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .empty{text-align:center;color:var(--muted);padding:20px}
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">✦</div>
+      <div>
+        <div class="brand-text">Hawalina Ventures</div>
+        <div class="brand-sub">CEO Portal</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="dashboard.html"><span class="dot"></span>Dashboard</a>
+      <a href="warehouse.html"><span class="dot"></span>Warehouse</a>
+      <a class="active" href="products.html"><span class="dot"></span>Products</a>
+      <a href="agents.html"><span class="dot"></span>Agents</a>
+      <a href="distribute.html"><span class="dot"></span>Distribute Stock</a>
+      <a href="sales.html"><span class="dot"></span>All Sales</a>
+      <a href="payments.html"><span class="dot"></span>Payments</a>
+      <a href="stockbalance.html"><span class="dot"></span>Stock Balance</a>
+      <a href="analytics.html"><span class="dot"></span>Analytics</a>
+      <a href="settings.html"><span class="dot"></span>Settings</a>
+    </nav>
+    <button class="logout-btn" id="logoutBtn">⎋ &nbsp;Logout</button>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="top">
+      <div>
+        <h2>Product Catalog</h2>
+        <small>Manage your product catalog for warehouse and sales</small>
+      </div>
+      <button class="btn" id="openAddBtn">＋ Add New Product</button>
+    </div>
+
+    <!-- KPIs -->
+    <section class="grid">
+      <div class="card">
+        <h4>Total Products</h4>
+        <div class="value" id="kpiTotal">0</div>
+        <p class="hint">Active products in catalog</p>
+      </div>
+      <div class="card">
+        <h4>Unique Brands</h4>
+        <div class="value" id="kpiBrands">0</div>
+        <p class="hint">Hair brands listed</p>
+      </div>
+      <div class="card">
+        <h4>Avg Selling Price</h4>
+        <div class="value">GHS <span id="kpiAvgPrice">0</span></div>
+        <p class="hint">Average unit selling price</p>
+      </div>
+      <div class="card">
+        <h4>Avg Agent Margin</h4>
+        <div class="value">GHS <span id="kpiAvgMargin">0</span></div>
+        <p class="hint">Avg selling − agent price</p>
+      </div>
+    </section>
+
+    <!-- Table -->
+    <section class="panel">
+      <div class="panelHeader">
+        <h3>📄 Product Catalog</h3>
+        <input class="search" id="search" placeholder="Search products..."/>
+      </div>
+      <div style="overflow:auto;padding:0 0 4px">
+        <table>
+          <thead>
+            <tr>
+              <th>Brand</th>
+              <th>Color</th>
+              <th>Length</th>
+              <th>Selling Price</th>
+              <th style="min-width:130px;text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="5" class="empty">Loading products...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Add / Edit Product Modal -->
+<div class="modal" id="modal">
+  <div class="box">
+    <div class="boxHead">
+      <h4 id="modalTitle">➕ Add New Product</h4>
+      <button class="btn ghost" id="closeBtn" style="padding:6px 10px">✕</button>
+    </div>
+    <div class="boxBody">
+      <div class="grid2">
+        <div class="field">
+          <label>Brand <span class="req">*</span></label>
+          <input id="f_brand" placeholder="e.g., Brazilian"/>
+        </div>
+        <div class="field">
+          <label>Color <span class="req">*</span></label>
+          <input id="f_color" placeholder="e.g., Black"/>
+        </div>
+        <div class="field">
+          <label>Length (Inches) <span class="req">*</span></label>
+          <input id="f_length" type="number" min="1" placeholder="e.g., 20"/>
+        </div>
+        <div class="field">
+          <label>Unit Selling Price (GHS) <span class="req">*</span></label>
+          <input id="f_sellingPrice" type="number" min="0" step="0.01" placeholder="e.g., 150"/>
+        </div>
+      </div>
+      <div class="form-error" id="formError"></div>
+      <div class="actions">
+        <button class="btn ghost" id="cancelBtn">Cancel</button>
+        <button class="btn" id="saveBtn">Add Product</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { requireRole, logout } from './auth.js';
+  import { getAllProducts, addProduct, updateProduct, deleteProduct } from './firestore-db.js';
+
+  let products = [];
+  let editingId = null;
+
+  // ── Auth guard ────────────────────────────────────────────────
+  async function init() {
+    const allowed = await requireRole('ceo');
+    if (!allowed) return;
+    setupListeners();
+    await loadProducts();
+  }
+
+  // ── Load ──────────────────────────────────────────────────────
+  async function loadProducts() {
+    document.getElementById('tbody').innerHTML =
+      '<tr><td colspan="5" class="empty">Loading products...</td></tr>';
+    const result = await getAllProducts();
+    products = result.success ? result.data : [];
+    render();
+    updateKPIs();
+  }
+
+  // ── KPIs ──────────────────────────────────────────────────────
+  function updateKPIs() {
+    const brands    = new Set(products.map(p => p.hairBrand)).size;
+    const avgSell   = products.length
+      ? products.reduce((s, p) => s + (p.sellingPrice || 0), 0) / products.length : 0;
+    const avgMargin = products.length
+      ? products.reduce((s, p) => s + ((p.sellingPrice || 0) - (p.agentPrice || 0)), 0) / products.length : 0;
+
+    document.getElementById('kpiTotal').textContent     = products.length;
+    document.getElementById('kpiBrands').textContent    = brands;
+    document.getElementById('kpiAvgPrice').textContent  = fmt(avgSell);
+    document.getElementById('kpiAvgMargin').textContent = fmt(avgMargin);
+  }
+
+  // ── Render table ──────────────────────────────────────────────
+  function render() {
+    const q        = document.getElementById('search').value.trim().toLowerCase();
+    const filtered = products.filter(p =>
+      `${p.hairBrand||''} ${p.color||''} ${p.length||''}`.toLowerCase().includes(q)
+    );
+    const tbody = document.getElementById('tbody');
+
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">No products found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(p => `
+      <tr>
+        <td><strong>${esc(p.hairBrand||'')}</strong></td>
+        <td>${esc(p.color||'')}</td>
+        <td>${esc(String(p.length||''))} inches</td>
+        <td>GHS ${fmt(p.sellingPrice)}</td>
+        <td style="text-align:right">
+          <div class="actionBtns" style="justify-content:flex-end">
+            <button class="editBtn" data-id="${p.id}">✏️ Edit</button>
+            <button class="delBtn"  data-id="${p.id}" data-name="${esc((p.hairBrand||'')+' '+(p.color||'')+' '+(p.length||''))}" title="Delete">🗑️</button>
+          </div>
+        </td>
+      </tr>`).join('');
+
+    tbody.querySelectorAll('.editBtn').forEach(btn =>
+      btn.addEventListener('click', () => openEdit(btn.dataset.id))
+    );
+    tbody.querySelectorAll('.delBtn').forEach(btn =>
+      btn.addEventListener('click', () => handleDelete(btn.dataset.id, btn.dataset.name))
+    );
+  }
+
+  // ── Modal helpers ─────────────────────────────────────────────
+  const modal    = document.getElementById('modal');
+  const closeModal = () => {
+    modal.classList.remove('open');
+    editingId = null;
+    document.getElementById('formError').style.display = 'none';
+  };
+
+  function openAdd() {
+    editingId = null;
+    document.getElementById('modalTitle').textContent = '➕ Add New Product';
+    document.getElementById('saveBtn').textContent    = 'Add Product';
+    ['f_brand','f_color','f_length','f_sellingPrice'].forEach(id =>
+      document.getElementById(id).value = ''
+    );
+    document.getElementById('formError').style.display = 'none';
+    modal.classList.add('open');
+    setTimeout(() => document.getElementById('f_brand').focus(), 30);
+  }
+
+  function openEdit(productId) {
+    const p = products.find(x => x.id === productId);
+    if (!p) return;
+    editingId = productId;
+    document.getElementById('modalTitle').textContent  = '✏️ Edit Product';
+    document.getElementById('saveBtn').textContent     = 'Save Changes';
+    document.getElementById('f_brand').value          = p.hairBrand   || '';
+    document.getElementById('f_color').value          = p.color       || '';
+    document.getElementById('f_length').value         = p.length      || '';
+    document.getElementById('f_sellingPrice').value   = p.sellingPrice || '';
+    document.getElementById('formError').style.display = 'none';
+    modal.classList.add('open');
+  }
+
+  // ── Save (add or edit) ────────────────────────────────────────
+  document.getElementById('saveBtn').addEventListener('click', async () => {
+    document.getElementById('formError').style.display = 'none';
+
+    const hairBrand    = document.getElementById('f_brand').value.trim();
+    const color        = document.getElementById('f_color').value.trim();
+    const length       = document.getElementById('f_length').value.trim();
+    const sellingPrice = parseFloat(document.getElementById('f_sellingPrice').value);
+
+    if (!hairBrand || !color || !length || isNaN(sellingPrice))
+      return showError('Please fill in all required fields.');
+    if (sellingPrice < 0)
+      return showError('Selling price cannot be negative.');
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+    const data = { hairBrand, color, length: Number(length), sellingPrice };
+
+    let result;
+    if (editingId) {
+      result = await updateProduct(editingId, data);
+    } else {
+      // Check for duplicate
+      const dup = products.find(p =>
+        (p.hairBrand||'').toLowerCase() === hairBrand.toLowerCase() &&
+        (p.color||'').toLowerCase()     === color.toLowerCase() &&
+        String(p.length)                === String(length)
+      );
+      if (dup) {
+        btn.disabled = false;
+        btn.textContent = editingId ? 'Save Changes' : 'Add Product';
+        return showError('A product with this brand, color, and length already exists.');
+      }
+      result = await addProduct(data);
+    }
+
+    btn.disabled = false;
+    btn.textContent = editingId ? 'Save Changes' : 'Add Product';
+
+    if (result.success) {
+      closeModal();
+      await loadProducts();
+    } else {
+      showError('Error: ' + result.error);
+    }
+  });
+
+  // ── Delete ────────────────────────────────────────────────────
+  async function handleDelete(productId, productName) {
+    if (!confirm(`Delete product: "${productName}"?\n\nIt will no longer appear in the catalog.`)) return;
+    const result = await deleteProduct(productId);
+    if (result.success) {
+      await loadProducts();
+    } else {
+      alert('Error deleting product: ' + result.error);
+    }
+  }
+
+  // ── Listeners ─────────────────────────────────────────────────
+  function setupListeners() {
+    document.getElementById('openAddBtn').addEventListener('click', openAdd);
+    document.getElementById('closeBtn').addEventListener('click', closeModal);
+    document.getElementById('cancelBtn').addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    document.getElementById('search').addEventListener('input', render);
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await logout();
+      window.location.href = 'index.html';
+    });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────
+  function showError(msg) {
+    const el = document.getElementById('formError');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function fmt(n) {
+    return Number(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function esc(str) {
+    return String(str ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+  }
+
+  init();
+</script>
+</body>
+</html>
