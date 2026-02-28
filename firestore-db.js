@@ -1,6 +1,6 @@
 // Firestore Database Operations
 // Updated with new pricing structure and Product Catalog support
-// Version 2.0 - January 13, 2025
+// Version 2.2 - Cleaned to match Firestore schema
 
 import { db } from './firebase-config.js';
 import { 
@@ -27,11 +27,11 @@ export async function addAgent(agentData) {
   try {
     const docRef = await addDoc(collection(db, 'agents'), {
       ...agentData,
-      dateCreated: serverTimestamp(),
-      isActive: true,
-      totalOwed: 0,
-      totalPaid: 0,
-      totalCommission: 0
+      dateCreated:     serverTimestamp(),
+      isActive:        true,
+      totalOwed:       0,
+      totalPaid:       0,
+      totalCommission: 0,
     });
     return { success: true, id: docRef.id };
   } catch (error) {
@@ -39,7 +39,6 @@ export async function addAgent(agentData) {
     return { success: false, error: error.message };
   }
 }
-
 export async function getAgent(agentId) {
   try {
     const docRef = doc(db, 'agents', agentId);
@@ -83,17 +82,17 @@ export async function updateAgent(agentId, agentData) {
   }
 }
 
-// ✅ Actually deletes the document permanently
 export async function deleteAgent(agentId) {
   try {
     const docRef = doc(db, 'agents', agentId);
-    await deleteDoc(docRef);
+    await updateDoc(docRef, { isActive: false });
     return { success: true };
   } catch (error) {
     console.error('Error deleting agent:', error);
     return { success: false, error: error.message };
   }
 }
+
 // ============================================
 // PRODUCTS COLLECTION (CATALOG)
 // ============================================
@@ -175,7 +174,7 @@ export async function deleteProduct(productId) {
   }
 }
 
-// Helper function to get unique hair brands
+// Helper: get unique hair brands
 export async function getHairBrands() {
   try {
     const result = await getAllProducts();
@@ -190,7 +189,7 @@ export async function getHairBrands() {
   }
 }
 
-// Helper function to get colors for a brand
+// Helper: get colors for a brand
 export async function getColorsByBrand(hairBrand) {
   try {
     const result = await getProductsByBrand(hairBrand);
@@ -205,7 +204,7 @@ export async function getColorsByBrand(hairBrand) {
   }
 }
 
-// Helper function to get lengths for a brand and color
+// Helper: get lengths for a brand and color
 export async function getLengthsByBrandAndColor(hairBrand, color) {
   try {
     const q = query(
@@ -226,6 +225,28 @@ export async function getLengthsByBrandAndColor(hairBrand, color) {
   }
 }
 
+// Helper: get a specific product by brand + color + length
+export async function getProductBySpecs(hairBrand, color, length) {
+  try {
+    const q = query(
+      collection(db, 'products'),
+      where('hairBrand', '==', hairBrand),
+      where('color', '==', color),
+      where('length', '==', length),
+      where('isActive', '==', true)
+    );
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+      return { success: false, error: 'Product not found' };
+    }
+    const docSnap = querySnapshot.docs[0];
+    return { success: true, data: { id: docSnap.id, ...docSnap.data() } };
+  } catch (error) {
+    console.error('Error getting product by specs:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // ============================================
 // WAREHOUSE COLLECTION
 // ============================================
@@ -233,23 +254,23 @@ export async function getLengthsByBrandAndColor(hairBrand, color) {
 export async function addWarehouseStock(stockData) {
   try {
     const availableQuantity = stockData.importQuantity || stockData.initialQuantity;
-    const totalImportValue = (stockData.importPrice || stockData.costPrice) * availableQuantity;
+    const totalImportValue  = (stockData.importPrice || stockData.costPrice) * availableQuantity;
     
     const docRef = await addDoc(collection(db, 'warehouse'), {
-      hairBrand: stockData.hairBrand || stockData.productName,
-      color: stockData.color || 'Not Specified',
-      length: stockData.inches || stockData.length,
-      importDate: stockData.importDate,
-      importQuantity: stockData.importQuantity || stockData.initialQuantity,
-      availableQuantity: availableQuantity,
+      hairBrand:           stockData.hairBrand || stockData.productName,
+      color:               stockData.color || 'Not Specified',
+      length:              stockData.inches || stockData.length,
+      importDate:          stockData.importDate,
+      importQuantity:      availableQuantity,
+      availableQuantity:   availableQuantity,
       distributedQuantity: 0,
-      importPrice: stockData.importPrice || stockData.costPrice,
-      totalImportValue: totalImportValue,
+      importPrice:         stockData.importPrice || stockData.costPrice,
+      totalImportValue:    totalImportValue,
       availableTotalValue: totalImportValue,
-      supplier: stockData.supplier,
-      notes: stockData.notes || '',
-      status: 'available',
-      dateAdded: serverTimestamp()
+      supplier:            stockData.supplier || '',
+      notes:               stockData.notes || '',
+      status:              'available',
+      dateAdded:           serverTimestamp()
     });
     return { success: true, id: docRef.id };
   } catch (error) {
@@ -264,13 +285,9 @@ export async function getWarehouseStock() {
     const stock = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      // Auto-calculate status
       let status = 'available';
-      if (data.availableQuantity === 0) {
-        status = 'out';
-      } else if (data.availableQuantity < 10) {
-        status = 'low';
-      }
+      if (data.availableQuantity === 0) status = 'out';
+      else if (data.availableQuantity < 10) status = 'low';
       stock.push({ id: doc.id, ...data, status });
     });
     return { success: true, data: stock };
@@ -283,30 +300,32 @@ export async function getWarehouseStock() {
 export async function updateWarehouseStock(stockId, updateData) {
   try {
     const docRef = doc(db, 'warehouse', stockId);
-    
-    // Recalculate values if quantities change
+
     if (updateData.availableQuantity !== undefined) {
-      const stockDoc = await getDoc(docRef);
+      const stockDoc    = await getDoc(docRef);
       const currentData = stockDoc.data();
       updateData.availableTotalValue = updateData.availableQuantity * currentData.importPrice;
-      
-      // Update status
-      if (updateData.availableQuantity === 0) {
-        updateData.status = 'out';
-      } else if (updateData.availableQuantity < 10) {
-        updateData.status = 'low';
-      } else {
-        updateData.status = 'available';
-      }
+
+      if (updateData.availableQuantity === 0)     updateData.status = 'out';
+      else if (updateData.availableQuantity < 10) updateData.status = 'low';
+      else                                         updateData.status = 'available';
     }
     
-    await updateDoc(docRef, {
-      ...updateData,
-      lastUpdated: serverTimestamp()
-    });
+    await updateDoc(docRef, { ...updateData, lastUpdated: serverTimestamp() });
     return { success: true };
   } catch (error) {
     console.error('Error updating warehouse stock:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Permanently delete a warehouse stock entry
+export async function deleteWarehouseStock(stockId) {
+  try {
+    await deleteDoc(doc(db, 'warehouse', stockId));
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting warehouse stock:', error);
     return { success: false, error: error.message };
   }
 }
@@ -323,19 +342,17 @@ export async function addDistribution(distributionData) {
       status: 'completed'
     });
     
-    // Update warehouse quantities
     if (distributionData.items && distributionData.items.length > 0) {
       for (const item of distributionData.items) {
         if (item.warehouseStockId) {
           const stockRef = doc(db, 'warehouse', item.warehouseStockId);
           const stockDoc = await getDoc(stockRef);
           if (stockDoc.exists()) {
-            const currentData = stockDoc.data();
-            const newAvailable = currentData.availableQuantity - item.quantity;
+            const currentData    = stockDoc.data();
+            const newAvailable   = currentData.availableQuantity   - item.quantity;
             const newDistributed = currentData.distributedQuantity + item.quantity;
-            
             await updateWarehouseStock(item.warehouseStockId, {
-              availableQuantity: newAvailable,
+              availableQuantity:   newAvailable,
               distributedQuantity: newDistributed
             });
           }
@@ -343,15 +360,12 @@ export async function addDistribution(distributionData) {
       }
     }
     
-    // Update agent's total owed
     if (distributionData.agentId && distributionData.totalAgentPrice) {
       const agentRef = doc(db, 'agents', distributionData.agentId);
       const agentDoc = await getDoc(agentRef);
       if (agentDoc.exists()) {
         const currentOwed = agentDoc.data().totalOwed || 0;
-        await updateDoc(agentRef, {
-          totalOwed: currentOwed + distributionData.totalAgentPrice
-        });
+        await updateDoc(agentRef, { totalOwed: currentOwed + distributionData.totalAgentPrice });
       }
     }
     
@@ -366,15 +380,10 @@ export async function getDistributions(agentId = null) {
   try {
     let q;
     if (agentId) {
-      q = query(
-        collection(db, 'distributions'), 
-        where('agentId', '==', agentId),
-        orderBy('distributionDate', 'desc')
-      );
+      q = query(collection(db, 'distributions'), where('agentId', '==', agentId), orderBy('distributionDate', 'desc'));
     } else {
       q = query(collection(db, 'distributions'), orderBy('distributionDate', 'desc'));
     }
-    
     const querySnapshot = await getDocs(q);
     const distributions = [];
     querySnapshot.forEach((doc) => {
@@ -395,22 +404,20 @@ export async function addSale(saleData) {
   try {
     const docRef = await addDoc(collection(db, 'sales'), {
       ...saleData,
-      saleDate: saleData.saleDate || serverTimestamp(),
+      saleDate:      saleData.saleDate || serverTimestamp(),
       paymentStatus: saleData.paymentStatus || 'pending'
     });
-    
-    // Update agent's commission
+
+    // Update selling agent's totalCommission
     if (saleData.agentId && saleData.agentCommission) {
       const agentRef = doc(db, 'agents', saleData.agentId);
       const agentDoc = await getDoc(agentRef);
       if (agentDoc.exists()) {
         const currentCommission = agentDoc.data().totalCommission || 0;
-        await updateDoc(agentRef, {
-          totalCommission: currentCommission + saleData.agentCommission
-        });
+        await updateDoc(agentRef, { totalCommission: currentCommission + saleData.agentCommission });
       }
     }
-    
+
     return { success: true, id: docRef.id };
   } catch (error) {
     console.error('Error adding sale:', error);
@@ -418,19 +425,15 @@ export async function addSale(saleData) {
   }
 }
 
+
 export async function getSales(agentId = null) {
   try {
     let q;
     if (agentId) {
-      q = query(
-        collection(db, 'sales'), 
-        where('agentId', '==', agentId),
-        orderBy('saleDate', 'desc')
-      );
+      q = query(collection(db, 'sales'), where('agentId', '==', agentId), orderBy('saleDate', 'desc'));
     } else {
       q = query(collection(db, 'sales'), orderBy('saleDate', 'desc'));
     }
-    
     const querySnapshot = await getDocs(q);
     const sales = [];
     querySnapshot.forEach((doc) => {
@@ -446,10 +449,7 @@ export async function getSales(agentId = null) {
 export async function updateSale(saleId, saleData) {
   try {
     const docRef = doc(db, 'sales', saleId);
-    await updateDoc(docRef, {
-      ...saleData,
-      lastUpdated: serverTimestamp()
-    });
+    await updateDoc(docRef, { ...saleData, lastUpdated: serverTimestamp() });
     return { success: true };
   } catch (error) {
     console.error('Error updating sale:', error);
@@ -466,32 +466,29 @@ export async function addPayment(paymentData) {
     const docRef = await addDoc(collection(db, 'payments'), {
       ...paymentData,
       paymentDate: paymentData.paymentDate || serverTimestamp(),
-      recordedBy: paymentData.recordedBy || 'admin@hawalina.com'
+      recordedBy:  paymentData.recordedBy  || 'admin@hawalina.com'
     });
     
-    // Update agent's balance
     if (paymentData.agentId && paymentData.amount) {
       const agentRef = doc(db, 'agents', paymentData.agentId);
       const agentDoc = await getDoc(agentRef);
       if (agentDoc.exists()) {
-        const agentData = agentDoc.data();
+        const agentData   = agentDoc.data();
         const currentOwed = agentData.totalOwed || 0;
         const currentPaid = agentData.totalPaid || 0;
-        
         await updateDoc(agentRef, {
-          totalOwed: currentOwed - paymentData.amount,
-          totalPaid: currentPaid + paymentData.amount,
-          lastPayment: paymentData.paymentDate,
+          totalOwed:         currentOwed - paymentData.amount,
+          totalPaid:         currentPaid + paymentData.amount,
+          lastPayment:       paymentData.paymentDate,
           lastPaymentAmount: paymentData.amount
         });
-        
-        // Create notification for agent
+
         await addNotification({
           agentId: paymentData.agentId,
-          type: 'payment_received',
+          type:    'payment_received',
           message: `Payment of GHS ${paymentData.amount} received`,
-          date: serverTimestamp(),
-          isRead: false
+          date:    serverTimestamp(),
+          isRead:  false
         });
       }
     }
@@ -507,15 +504,10 @@ export async function getPayments(agentId = null) {
   try {
     let q;
     if (agentId) {
-      q = query(
-        collection(db, 'payments'),
-        where('agentId', '==', agentId),
-        orderBy('paymentDate', 'desc')
-      );
+      q = query(collection(db, 'payments'), where('agentId', '==', agentId), orderBy('paymentDate', 'desc'));
     } else {
       q = query(collection(db, 'payments'), orderBy('paymentDate', 'desc'));
     }
-    
     const querySnapshot = await getDocs(q);
     const payments = [];
     querySnapshot.forEach((doc) => {
@@ -553,7 +545,6 @@ export async function getNotifications(agentId) {
       orderBy('dateCreated', 'desc'),
       limit(50)
     );
-    
     const querySnapshot = await getDocs(q);
     const notifications = [];
     querySnapshot.forEach((doc) => {
@@ -597,4 +588,5 @@ export function calculateTotalSellingPrice(sellingPrice, quantity) {
   return sellingPrice * quantity;
 }
 
-console.log('✅ Firestore database module loaded (v2.0 - Updated Pricing Structure)');
+
+console.log('✅ Firestore database module loaded (v2.2)');
