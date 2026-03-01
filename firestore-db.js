@@ -378,16 +378,24 @@ export async function addDistribution(distributionData) {
 
 export async function getDistributions(agentId = null) {
   try {
+    // NOTE: No orderBy here — avoids needing a composite Firestore index
+    // (where agentId + orderBy distributionDate). We sort in JS instead.
     let q;
     if (agentId) {
-      q = query(collection(db, 'distributions'), where('agentId', '==', agentId), orderBy('distributionDate', 'desc'));
+      q = query(collection(db, 'distributions'), where('agentId', '==', agentId));
     } else {
-      q = query(collection(db, 'distributions'), orderBy('distributionDate', 'desc'));
+      q = query(collection(db, 'distributions'));
     }
     const querySnapshot = await getDocs(q);
     const distributions = [];
     querySnapshot.forEach((doc) => {
       distributions.push({ id: doc.id, ...doc.data() });
+    });
+    // Sort descending — handles both string dates ("2026-03-01") and Timestamps
+    distributions.sort((a, b) => {
+      const da = a.distributionDate?.toDate ? a.distributionDate.toDate() : new Date(a.distributionDate || 0);
+      const db2 = b.distributionDate?.toDate ? b.distributionDate.toDate() : new Date(b.distributionDate || 0);
+      return db2 - da;
     });
     return { success: true, data: distributions };
   } catch (error) {
@@ -428,9 +436,11 @@ export async function addSale(saleData) {
 
 export async function getSales(agentId = null) {
   try {
+    // NOTE: No orderBy on filtered query — avoids composite index requirement.
+    // Sort by saleDate in JS instead.
     let q;
     if (agentId) {
-      q = query(collection(db, 'sales'), where('agentId', '==', agentId), orderBy('saleDate', 'desc'));
+      q = query(collection(db, 'sales'), where('agentId', '==', agentId));
     } else {
       q = query(collection(db, 'sales'), orderBy('saleDate', 'desc'));
     }
@@ -439,6 +449,13 @@ export async function getSales(agentId = null) {
     querySnapshot.forEach((doc) => {
       sales.push({ id: doc.id, ...doc.data() });
     });
+    if (agentId) {
+      sales.sort((a, b) => {
+        const da = a.saleDate?.toDate ? a.saleDate.toDate() : new Date(a.saleDate || 0);
+        const db2 = b.saleDate?.toDate ? b.saleDate.toDate() : new Date(b.saleDate || 0);
+        return db2 - da;
+      });
+    }
     return { success: true, data: sales };
   } catch (error) {
     console.error('Error getting sales:', error);
@@ -502,9 +519,10 @@ export async function addPayment(paymentData) {
 
 export async function getPayments(agentId = null) {
   try {
+    // NOTE: No orderBy on filtered query — avoids composite index requirement.
     let q;
     if (agentId) {
-      q = query(collection(db, 'payments'), where('agentId', '==', agentId), orderBy('paymentDate', 'desc'));
+      q = query(collection(db, 'payments'), where('agentId', '==', agentId));
     } else {
       q = query(collection(db, 'payments'), orderBy('paymentDate', 'desc'));
     }
@@ -513,6 +531,13 @@ export async function getPayments(agentId = null) {
     querySnapshot.forEach((doc) => {
       payments.push({ id: doc.id, ...doc.data() });
     });
+    if (agentId) {
+      payments.sort((a, b) => {
+        const da = a.paymentDate?.toDate ? a.paymentDate.toDate() : new Date(a.paymentDate || 0);
+        const db2 = b.paymentDate?.toDate ? b.paymentDate.toDate() : new Date(b.paymentDate || 0);
+        return db2 - da;
+      });
+    }
     return { success: true, data: payments };
   } catch (error) {
     console.error('Error getting payments:', error);
