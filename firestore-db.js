@@ -614,5 +614,76 @@ export function calculateTotalSellingPrice(sellingPrice, quantity) {
   return sellingPrice * quantity;
 }
 
+// ============================================
+// STOCK RETURNS
+// ============================================
+// ADD THIS FUNCTION to firestore-db.js
+
+export async function returnStock(returnData) {
+  try {
+    const {
+      agentId,
+      agentName,
+      distributionId,
+      warehouseStockId,
+      hairBrand,
+      color,
+      length,
+      returnQuantity,
+      unitAgentPrice,
+    } = returnData;
+
+    const totalRefund = returnQuantity * unitAgentPrice;
+
+    // 1. Restore warehouse stock
+    const warehouseRef = doc(db, 'warehouse', warehouseStockId);
+    const warehouseSnap = await getDoc(warehouseRef);
+    if (!warehouseSnap.exists()) {
+      return { success: false, error: 'Warehouse batch not found.' };
+    }
+    const wData = warehouseSnap.data();
+    const newAvailable   = (wData.availableQuantity   || 0) + returnQuantity;
+    const newDistributed = Math.max(0, (wData.distributedQuantity || 0) - returnQuantity);
+    await updateDoc(warehouseRef, {
+      availableQuantity:   newAvailable,
+      distributedQuantity: newDistributed,
+      availableTotalValue: newAvailable * (wData.importPrice || 0),
+      status:              newAvailable === 0 ? 'out' : newAvailable < 10 ? 'low' : 'available',
+      lastUpdated:         serverTimestamp(),
+    });
+
+    // 2. Decrease agent's totalOwed
+    const agentRef  = doc(db, 'agents', agentId);
+    const agentSnap = await getDoc(agentRef);
+    if (agentSnap.exists()) {
+      const currentOwed = agentSnap.data().totalOwed || 0;
+      await updateDoc(agentRef, {
+        totalOwed:   Math.max(0, currentOwed - totalRefund),
+        lastUpdated: serverTimestamp(),
+      });
+    }
+
+    // 3. Silent audit log in stockReturns collection
+    await addDoc(collection(db, 'stockReturns'), {
+      agentId,
+      agentName,
+      distributionId:  distributionId || null,
+      warehouseStockId,
+      hairBrand,
+      color,
+      length,
+      returnQuantity,
+      unitAgentPrice,
+      totalRefund,
+      returnDate:  serverTimestamp(),
+      recordedBy:  'admin',
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error returning stock:', error);
+    return { success: false, error: error.message };
+  }
+}
 
 console.log('✅ Firestore database module loaded (v2.2)');
