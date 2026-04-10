@@ -82,10 +82,11 @@ export async function updateAgent(agentId, agentData) {
   }
 }
 
+// ✅ Actually deletes the document permanently
 export async function deleteAgent(agentId) {
   try {
     const docRef = doc(db, 'agents', agentId);
-    await updateDoc(docRef, { isActive: false });
+    await deleteDoc(docRef);
     return { success: true };
   } catch (error) {
     console.error('Error deleting agent:', error);
