@@ -101,7 +101,6 @@
       <a href="payments.html"><span class="ico">💳</span>Payments</a>
       <a class="active" href="stockbalance.html"><span class="ico">📊</span>Stock Balance</a>
       <a href="analytics.html"><span class="ico">📈</span>Analytics</a>
-      <!-- <a href="settings.html"><span class="ico">⚙️</span>Settings</a> -->
     </nav>
     <button class="logout-btn" id="logoutBtn">⎋ &nbsp;Logout</button>
   </aside>
@@ -112,7 +111,7 @@
         <div class="pageIcon">📋</div>
         <div class="title">
           <h2>Agent Stock Balance</h2>
-          <small>Track inventory held by each agent — distributed minus sold</small>
+          <small>Track inventory held by each agent — distributed minus returned minus sold</small>
         </div>
       </div>
     </div>
@@ -125,7 +124,7 @@
         <div class="cardText">
           <div class="cardTitle">TOTAL DISTRIBUTED</div>
           <p class="cardValue"><span id="kpiReceived">0</span> <span style="font-size:.6em">units</span></p>
-          <p class="cardHint">Sent to all agents</p>
+          <p class="cardHint">Sent to agents (net of returns)</p>
         </div>
       </div>
       <div class="card">
@@ -181,6 +180,7 @@
               <th>COLOR</th>
               <th>LENGTH</th>
               <th>DISTRIBUTED</th>
+              <th>RETURNED</th>
               <th>SOLD</th>
               <th>REMAINING</th>
               <th>REMAINING VALUE</th>
@@ -188,12 +188,13 @@
             </tr>
           </thead>
           <tbody id="tbody">
-            <tr><td colspan="9" class="empty">Loading stock balance...</td></tr>
+            <tr><td colspan="10" class="empty">Loading stock balance...</td></tr>
           </tbody>
           <tfoot>
             <tr>
               <td colspan="4">TOTALS</td>
               <td class="num" id="tDistributed">0</td>
+              <td class="num" id="tReturned">0</td>
               <td class="num" id="tSold">0</td>
               <td class="num" id="tRemain">0</td>
               <td class="num">GHS <span id="tValue">0.00</span></td>
@@ -211,11 +212,10 @@
   import { requireRole, logout } from './auth.js';
   import { getAllAgents, getDistributions, getSales } from './firestore-db.js';
 
-  let rows        = []; // computed balance rows
+  let rows        = [];
   let agents      = [];
   let activeAgent = '';
 
-  // ── Auth guard ────────────────────────────────────────────────
   async function init() {
     const allowed = await requireRole('ceo');
     if (!allowed) return;
@@ -226,16 +226,15 @@
   // ── Load & compute balance ────────────────────────────────────
   async function loadData() {
     document.getElementById('tbody').innerHTML =
-      '<tr><td colspan="9" class="empty">Loading stock balance...</td></tr>';
+      '<tr><td colspan="10" class="empty">Loading stock balance...</td></tr>';
 
     const [agentRes, distRes, salesRes] = await Promise.all([
       getAllAgents(),
-      getDistributions(),   // all distributions
-      getSales()            // all sales
+      getDistributions(),
+      getSales()
     ]);
 
     agents = agentRes.success ? agentRes.data : [];
-
     const distributions = distRes.success  ? distRes.data  : [];
     const sales         = salesRes.success ? salesRes.data : [];
 
@@ -247,15 +246,15 @@
     );
 
     // ── Build balance map: key = agentId|brand|color|length ──
-    // Map: key → { agentId, agentName, brand, color, length, distributed, sold, unitAgentPrice }
     const map = {};
-
     const key = (agentId, brand, color, length) =>
       `${agentId}||${brand}||${color}||${String(length)}`;
 
-    // Add distributions
+    // Add distributions — subtract returnedQuantity so net reflects
+    // only what the agent actually still holds from us
     distributions.forEach(d => {
-      // Each distribution may have items array or flat fields
+      const returned = d.returnedQuantity || 0;
+
       const items = d.items && d.items.length
         ? d.items
         : [{ hairBrand: d.hairBrand, color: d.color, length: d.length, quantity: d.quantity, agentPrice: d.unitAgentPrice }];
@@ -271,11 +270,14 @@
             color:          item.color     || '—',
             length:         item.length    || '—',
             distributed:    0,
+            returned:       0,
             sold:           0,
             unitAgentPrice: item.agentPrice || d.unitAgentPrice || 0
           };
         }
-        map[k].distributed += (item.quantity || 0);
+        // Net distributed = original quantity minus units returned to warehouse
+        map[k].distributed += Math.max(0, (item.quantity || 0) - returned);
+        map[k].returned    += returned;
       });
     });
 
@@ -290,7 +292,6 @@
         if (map[k]) {
           map[k].sold += (item.quantity || s.quantity || 0);
         } else {
-          // Sale exists but no matching distribution record — add row with 0 distributed
           const agent = agents.find(a => a.id === s.agentId);
           map[k] = {
             agentId:        s.agentId,
@@ -299,6 +300,7 @@
             color:          item.color     || s.color     || '—',
             length:         item.length    || s.length    || '—',
             distributed:    0,
+            returned:       0,
             sold:           item.quantity  || s.quantity  || 0,
             unitAgentPrice: s.unitAgentPrice || 0
           };
@@ -317,7 +319,6 @@
   // ── Apply filters ─────────────────────────────────────────────
   function applyFilters() {
     const q = document.getElementById('search').value.trim().toLowerCase();
-
     const filtered = rows.filter(r => {
       if (activeAgent && r.agentId !== activeAgent) return false;
       if (q) {
@@ -326,17 +327,17 @@
       }
       return true;
     });
-
     updateKPIs(filtered);
     renderTable(filtered);
   }
 
   // ── KPIs ──────────────────────────────────────────────────────
   function updateKPIs(filtered) {
-    const totalDist   = filtered.reduce((s, r) => s + r.distributed, 0);
-    const totalSold   = filtered.reduce((s, r) => s + r.sold, 0);
-    const totalRemain = filtered.reduce((s, r) => s + Math.max(0, r.distributed - r.sold), 0);
-    const totalVal    = filtered.reduce((s, r) => {
+    const totalDist     = filtered.reduce((s, r) => s + r.distributed, 0);
+    const totalReturned = filtered.reduce((s, r) => s + r.returned, 0);
+    const totalSold     = filtered.reduce((s, r) => s + r.sold, 0);
+    const totalRemain   = filtered.reduce((s, r) => s + Math.max(0, r.distributed - r.sold), 0);
+    const totalVal      = filtered.reduce((s, r) => {
       const rem = Math.max(0, r.distributed - r.sold);
       return s + rem * (r.unitAgentPrice || 0);
     }, 0);
@@ -347,6 +348,7 @@
     document.getElementById('kpiValue').textContent    = fmt(totalVal);
 
     document.getElementById('tDistributed').textContent = totalDist;
+    document.getElementById('tReturned').textContent    = totalReturned;
     document.getElementById('tSold').textContent        = totalSold;
     document.getElementById('tRemain').textContent      = totalRemain;
     document.getElementById('tValue').textContent       = fmt(totalVal);
@@ -356,7 +358,7 @@
   function renderTable(filtered) {
     const tbody = document.getElementById('tbody');
     if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="9" class="empty">No stock balance records found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="empty">No stock balance records found.</td></tr>';
       document.getElementById('countLabel').textContent = '0 records';
       return;
     }
@@ -368,8 +370,8 @@
 
       let statusClass = 'badge-ok', statusText = '● In Stock';
       let barClass    = '';
-      if (remaining === 0)       { statusClass = 'badge-out'; statusText = '○ Sold Out'; barClass = 'out'; }
-      else if (pct < 30)         { statusClass = 'badge-low'; statusText = '▲ Low Stock'; barClass = 'low'; }
+      if (remaining === 0)  { statusClass = 'badge-out'; statusText = '○ Sold Out';  barClass = 'out'; }
+      else if (pct < 30)    { statusClass = 'badge-low'; statusText = '▲ Low Stock'; barClass = 'low'; }
 
       return `<tr>
         <td><strong>${esc(r.agentName)}</strong></td>
@@ -377,6 +379,7 @@
         <td>${esc(r.color)}</td>
         <td>${esc(String(r.length))}"</td>
         <td class="num">${r.distributed}</td>
+        <td class="num" style="color:var(--muted)">${r.returned > 0 ? '−' + r.returned : '—'}</td>
         <td class="num">${r.sold}</td>
         <td class="num">
           <span class="stockBar"><span class="stockBarFill ${barClass}" style="width:${Math.round(pct)}%"></span></span>
