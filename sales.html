@@ -205,7 +205,11 @@
     const t1 = sales.reduce((s, d) => s + (d.totalSellingPrice || 0), 0);
     const t2 = sales.reduce((s, d) => s + (d.agentCommission   || 0), 0);
     const t3 = sales.reduce((s, d) => s + (d.quantity          || 0), 0);
-    const t4 = sales.reduce((s, d) => s + (d.totalAgentPrice   || 0), 0);
+    const t4 = sales.reduce((s, d) => {
+      const unitPrice = d.agentPrice || d.unitAgentPrice || 0;
+      const totalForRow = d.totalAgentPrice || (unitPrice * (d.quantity || 0));
+      return s + totalForRow;
+    }, 0);
     document.getElementById('m1').textContent = fmt(t1);
     document.getElementById('m2').textContent = fmt(t2);
     document.getElementById('m3').textContent = t3;
