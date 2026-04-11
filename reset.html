@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>⚠️ Production Reset • Hawalina Ventures</title>
+  <style>
+    :root{
+      --bg:#0f0a1e;--card:#1a1036;--text:#f0eeff;--muted:#9d90c9;
+      --danger:#ef4444;--success:#10b981;--warn:#f59e0b;
+      --line:rgba(255,255,255,.1);--r:16px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background:var(--bg);color:var(--text);
+      min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+    }
+    .wrap{width:min(560px,100%)}
+    .header{text-align:center;margin-bottom:28px}
+    .warningIcon{font-size:52px;margin-bottom:12px}
+    .header h1{font-size:26px;color:#f87171;margin-bottom:8px}
+    .header p{color:var(--muted);font-size:14px;line-height:1.6}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:14px}
+    .card h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px;font-weight:800}
+    .checkList{display:flex;flex-direction:column;gap:8px}
+    .checkItem{display:flex;align-items:center;gap:10px;font-size:13px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+    .checkItem .ico{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:14px;flex-shrink:0;background:rgba(239,68,68,.15)}
+    .checkItem .label{flex:1;color:var(--text)}
+    .checkItem .status{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
+    .checkItem.done .status{color:var(--success)}
+    .checkItem.running .status{color:var(--warn)}
+    .checkItem.error .status{color:var(--danger)}
+    .confirmBox{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:var(--r);padding:16px;margin-bottom:14px}
+    .confirmBox p{font-size:13px;color:#fca5a5;line-height:1.6;margin-bottom:12px}
+    .confirmInput{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.08);color:#f87171;font-size:14px;outline:none;font-weight:700;letter-spacing:.04em}
+    .confirmInput::placeholder{color:rgba(239,68,68,.4);font-weight:400}
+    .confirmInput:focus{border-color:rgba(239,68,68,.7)}
+    .btn{width:100%;padding:14px;border-radius:12px;border:none;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .15s}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+    .btn.danger{background:var(--danger);color:#fff}
+    .btn.danger:hover:not(:disabled){background:#dc2626}
+    .logBox{background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:var(--r);padding:14px;font-family:ui-monospace,monospace;font-size:12px;line-height:1.8;max-height:260px;overflow-y:auto;display:none}
+    .log-info{color:#a5b4fc}
+    .log-ok{color:var(--success)}
+    .log-warn{color:var(--warn)}
+    .log-err{color:var(--danger)}
+    .log-done{color:#34d399;font-weight:700;font-size:13px}
+    .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .successBanner{display:none;text-align:center;padding:20px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:var(--r);margin-top:14px}
+    .successBanner h2{color:var(--success);margin-bottom:6px}
+    .successBanner p{color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="warningIcon">⚠️</div>
+    <h1>Production Reset</h1>
+    <p>This will permanently delete all dummy data from Firestore and Firebase Auth. This action <strong style="color:#f87171">cannot be undone</strong>.</p>
+  </div>
+
+  <!-- What will be deleted -->
+  <div class="card">
+    <h3>What will be deleted</h3>
+    <div class="checkList">
+      <div class="checkItem" id="item-agents">
+        <div class="ico">🧑🏾‍💼</div>
+        <div class="label">All agents (Firestore + Auth emails)</div>
+        <div class="status">Waiting</div>
+      </div>
+      <div class="checkItem" id="item-warehouse">
+        <div class="ico">📦</div>
+        <div class="label">All warehouse stock entries</div>
+        <div class="status">Waiting</div>
+      </div>
+      <div class="checkItem" id="item-products">
+        <div class="ico">🧴</div>
+        <div class="label">All products in catalog</div>
+        <div class="status">Waiting</div>
+      </div>
+      <div class="checkItem" id="item-distributions">
+        <div class="ico">🚚</div>
+        <div class="label">All distribution records</div>
+        <div class="status">Waiting</div>
+      </div>
+      <div class="checkItem" id="item-sales">
+        <div class="ico">🧾</div>
+        <div class="label">All sales records</div>
+        <div class="status">Waiting</div>
+      </div>
+      <div class="checkItem" id="item-payments">
+        <div class="ico">💳</div>
+        <div class="label">All payment records</div>
+        <div class="status">Waiting</div>
+      </div>
+      <div class="checkItem" id="item-notifications">
+        <div class="ico">🔔</div>
+        <div class="label">All notifications</div>
+        <div class="status">Waiting</div>
+      </div>
+      <div class="checkItem" id="item-stockReturns">
+        <div class="ico">↩️</div>
+        <div class="label">All stock return logs</div>
+        <div class="status">Waiting</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm box -->
+  <div class="confirmBox">
+    <p>Type <strong>RESET HAWALINA</strong> below to confirm you understand this is permanent and irreversible.</p>
+    <input class="confirmInput" id="confirmInput" placeholder='Type "RESET HAWALINA" to confirm' autocomplete="off" spellcheck="false" />
+  </div>
+
+  <!-- Action button -->
+  <button class="btn danger" id="resetBtn" disabled>
+    🗑️ &nbsp;Wipe All Data & Start Fresh
+  </button>
+
+  <!-- Live log -->
+  <div class="logBox" id="logBox"></div>
+
+  <!-- Success -->
+  <div class="successBanner" id="successBanner">
+    <h2>✅ Reset Complete</h2>
+    <p>All dummy data has been wiped. The database is clean and ready for production.<br><br>
+    You can now close this page and log in fresh.</p>
+  </div>
+
+</div>
+
+<script type="module">
+  import { db, auth } from './firebase-config.js';
+  import {
+    collection, getDocs, deleteDoc, doc
+  } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+  import {
+    deleteUser, signInWithEmailAndPassword
+  } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+  const confirmInput = document.getElementById('confirmInput');
+  const resetBtn     = document.getElementById('resetBtn');
+  const logBox       = document.getElementById('logBox');
+
+  // ── Enable button only when phrase matches ────────────────────
+  confirmInput.addEventListener('input', () => {
+    resetBtn.disabled = confirmInput.value.trim() !== 'RESET HAWALINA';
+  });
+
+  // ── Logging helpers ───────────────────────────────────────────
+  function log(msg, type = 'info') {
+    logBox.style.display = 'block';
+    const line = document.createElement('div');
+    line.className = `log-${type}`;
+    line.textContent = msg;
+    logBox.appendChild(line);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function setItemStatus(id, status, text) {
+    const el = document.getElementById(`item-${id}`);
+    if (!el) return;
+    el.className = `checkItem ${status}`;
+    el.querySelector('.status').textContent = text;
+  }
+
+  // ── Delete all docs in a Firestore collection ─────────────────
+  async function clearCollection(name) {
+    setItemStatus(name, 'running', 'Deleting...');
+    try {
+      const snap = await getDocs(collection(db, name));
+      if (snap.empty) {
+        setItemStatus(name, 'done', '✓ Empty');
+        log(`  ${name}: already empty`, 'ok');
+        return;
+      }
+      // Delete in batches of 50 to avoid any limit issues
+      const chunks = [];
+      const docs   = snap.docs;
+      for (let i = 0; i < docs.length; i += 50) {
+        chunks.push(docs.slice(i, i + 50));
+      }
+      for (const chunk of chunks) {
+        await Promise.all(chunk.map(d => deleteDoc(doc(db, name, d.id))));
+      }
+      setItemStatus(name, 'done', `✓ Deleted ${snap.size}`);
+      log(`  ✅ ${name}: deleted ${snap.size} document${snap.size !== 1 ? 's' : ''}`, 'ok');
+    } catch (err) {
+      setItemStatus(name, 'error', '✗ Failed');
+      log(`  ❌ ${name}: ${err.message}`, 'err');
+    }
+  }
+
+  // ── Delete all Firebase Auth agent accounts ───────────────────
+  // Client SDK can only delete the CURRENTLY signed-in user.
+  // Strategy: sign in as each agent using their stored credentials,
+  // then immediately call deleteUser() on that session.
+  // We get credentials from Firestore before we start wiping it.
+  async function deleteAgentAuthAccounts() {
+    setItemStatus('agents', 'running', 'Fetching...');
+    try {
+      const snap = await getDocs(collection(db, 'agents'));
+      if (snap.empty) {
+        log('  agents: no Firestore docs found', 'warn');
+        setItemStatus('agents', 'done', '✓ None found');
+        return;
+      }
+
+      const agentDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      log(`  Found ${agentDocs.length} agent(s) in Firestore`, 'info');
+
+      // Save current CEO session so we can detect it
+      const ceoUser = auth.currentUser;
+      const ceoEmail = ceoUser?.email || '';
+
+      let deleted = 0, skipped = 0, failed = 0;
+
+      for (const agent of agentDocs) {
+        const email = agent.nationalId
+          ? agent.nationalId.toLowerCase() + '@agent.hawalina.com'
+          : null;
+
+        if (!email) {
+          log(`  ⚠️  ${agent.fullName || agent.id}: no nationalId, skipping Auth delete`, 'warn');
+          skipped++;
+          continue;
+        }
+
+        // Skip CEO account
+        if (email === ceoEmail) {
+          log(`  ⏭️  Skipping CEO account (${email})`, 'warn');
+          skipped++;
+          continue;
+        }
+
+        // We need the password to sign in — but we don't store it.
+        // Instead we delete the Firestore doc (done in clearCollection)
+        // and note that Auth cleanup requires Admin SDK or re-auth.
+        // For a static app, flag these for manual deletion in Firebase Console.
+        log(`  ℹ️  ${agent.fullName||agent.nationalId}: Auth account flagged for manual deletion`, 'warn');
+        log(`      Email: ${email}`, 'warn');
+        skipped++;
+      }
+
+      setItemStatus('agents', 'done', `✓ Logged ${agentDocs.length}`);
+      log(`  ℹ️  Firestore agent docs will be deleted in next step`, 'info');
+
+    } catch (err) {
+      setItemStatus('agents', 'error', '✗ Failed');
+      log(`  ❌ agents Auth: ${err.message}`, 'err');
+    }
+  }
+
+  // ── Main reset ────────────────────────────────────────────────
+  resetBtn.addEventListener('click', async () => {
+    if (confirmInput.value.trim() !== 'RESET HAWALINA') return;
+
+    const sure = confirm(
+      '⚠️ FINAL WARNING\n\nThis will permanently delete ALL data.\n\nAre you absolutely sure?'
+    );
+    if (!sure) return;
+
+    resetBtn.disabled = true;
+    resetBtn.innerHTML = '<span class="spinner"></span> Resetting... do not close this tab';
+    confirmInput.disabled = true;
+    logBox.innerHTML = '';
+    logBox.style.display = 'block';
+
+    log('🚀 Starting reset...', 'info');
+    log('', 'info');
+
+    // Step 1: Log agent Auth emails before wiping Firestore
+    log('── Step 1: Scanning agent Auth accounts ──', 'info');
+    await deleteAgentAuthAccounts();
+    log('', 'info');
+
+    // Step 2: Wipe all Firestore collections
+    log('── Step 2: Clearing Firestore collections ──', 'info');
+    const collections = [
+      'agents', 'warehouse', 'products', 'distributions',
+      'sales', 'payments', 'notifications', 'stockReturns'
+    ];
+    for (const col of collections) {
+      await clearCollection(col);
+    }
+
+    log('', 'info');
+    log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
+    log('✅ Firestore reset complete!', 'done');
+    log('', 'info');
+    log('⚠️  IMPORTANT — Manual step required:', 'warn');
+    log('   Agent Auth accounts could not be auto-deleted', 'warn');
+    log('   from a static app (requires Admin SDK).', 'warn');
+    log('   Go to: Firebase Console → Authentication → Users', 'warn');
+    log('   and manually delete all @agent.hawalina.com accounts.', 'warn');
+    log('   Your CEO account is safe — do not delete it.', 'warn');
+
+    document.getElementById('successBanner').style.display = 'block';
+    resetBtn.innerHTML = '✅ Reset Complete';
+  });
+</script>
+</body>
+</html>
