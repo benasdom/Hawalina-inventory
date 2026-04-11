@@ -400,9 +400,13 @@
   function updateKPIs(dists) {
     let ta = 0, ts = 0, units = 0;
     dists.forEach(d => {
-      ta    += d.totalAgentPrice   || 0;
-      ts    += d.totalSellingPrice || 0;
-      units += d.quantity          || 0;
+      const returned  = d.returnedQuantity  || 0;
+      const netQty    = Math.max(0, (d.quantity || 0) - returned);
+      const unitAgent = d.unitAgentPrice    || 0;
+      const unitSell  = d.unitSellingPrice  || 0;
+      ta    += netQty * unitAgent;
+      ts    += netQty * unitSell;
+      units += netQty;
     });
     document.getElementById('kpiAgent').textContent = fmt(ta);
     document.getElementById('kpiSell').textContent  = fmt(ts);

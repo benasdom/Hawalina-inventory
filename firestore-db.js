@@ -619,6 +619,15 @@ export function calculateTotalSellingPrice(sellingPrice, quantity) {
 // ============================================
 // ADD THIS FUNCTION to firestore-db.js
 
+// ============================================
+// STOCK RETURNS
+// ============================================
+// ADD THIS FUNCTION to firestore-db.js
+// ============================================
+// STOCK RETURNS
+// ============================================
+// ADD THIS FUNCTION to firestore-db.js
+
 export async function returnStock(returnData) {
   try {
     const {
@@ -632,6 +641,25 @@ export async function returnStock(returnData) {
       returnQuantity,
       unitAgentPrice,
     } = returnData;
+
+    // Guard: verify against the actual distribution record
+    if (!distributionId) {
+      return { success: false, error: 'Distribution ID is required.' };
+    }
+    const distRef  = doc(db, 'distributions', distributionId);
+    const distSnap = await getDoc(distRef);
+    if (!distSnap.exists()) {
+      return { success: false, error: 'Distribution record not found.' };
+    }
+    const originalQty  = distSnap.data().quantity         || 0;
+    const alreadyBack  = distSnap.data().returnedQuantity || 0;
+    const maxReturnable = Math.max(0, originalQty - alreadyBack);
+    if (returnQuantity > maxReturnable) {
+      return { success: false, error: `Cannot return more than the remaining returnable quantity (${maxReturnable} units).` };
+    }
+    if (returnQuantity < 1) {
+      return { success: false, error: 'Return quantity must be at least 1.' };
+    }
 
     const totalRefund = returnQuantity * unitAgentPrice;
 
@@ -679,11 +707,16 @@ export async function returnStock(returnData) {
       recordedBy:  'admin',
     });
 
+    // 4. Update distribution record to track cumulative returned quantity
+    await updateDoc(distRef, {
+      returnedQuantity: (distSnap.data().returnedQuantity || 0) + returnQuantity,
+      lastUpdated:      serverTimestamp(),
+    });
+
     return { success: true };
   } catch (error) {
     console.error('Error returning stock:', error);
     return { success: false, error: error.message };
   }
 }
-
 console.log('✅ Firestore database module loaded (v2.2)');
