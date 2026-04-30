@@ -16,7 +16,8 @@ import {
   orderBy,
   limit,
   Timestamp,
-  serverTimestamp
+  serverTimestamp,
+  runTransaction  // Added this
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // ============================================
@@ -39,6 +40,7 @@ export async function addAgent(agentData) {
     return { success: false, error: error.message };
   }
 }
+
 export async function getAgent(agentId) {
   try {
     const docRef = doc(db, 'agents', agentId);
@@ -82,7 +84,6 @@ export async function updateAgent(agentId, agentData) {
   }
 }
 
-// ✅ Actually deletes the document permanently
 export async function deleteAgent(agentId) {
   try {
     const docRef = doc(db, 'agents', agentId);
@@ -175,7 +176,6 @@ export async function deleteProduct(productId) {
   }
 }
 
-// Helper: get unique hair brands
 export async function getHairBrands() {
   try {
     const result = await getAllProducts();
@@ -190,7 +190,6 @@ export async function getHairBrands() {
   }
 }
 
-// Helper: get colors for a brand
 export async function getColorsByBrand(hairBrand) {
   try {
     const result = await getProductsByBrand(hairBrand);
@@ -205,7 +204,6 @@ export async function getColorsByBrand(hairBrand) {
   }
 }
 
-// Helper: get lengths for a brand and color
 export async function getLengthsByBrandAndColor(hairBrand, color) {
   try {
     const q = query(
@@ -226,7 +224,6 @@ export async function getLengthsByBrandAndColor(hairBrand, color) {
   }
 }
 
-// Helper: get a specific product by brand + color + length
 export async function getProductBySpecs(hairBrand, color, length) {
   try {
     const q = query(
@@ -320,7 +317,6 @@ export async function updateWarehouseStock(stockId, updateData) {
   }
 }
 
-// Permanently delete a warehouse stock entry
 export async function deleteWarehouseStock(stockId) {
   try {
     await deleteDoc(doc(db, 'warehouse', stockId));
@@ -335,17 +331,22 @@ export async function deleteWarehouseStock(stockId) {
 // DISTRIBUTIONS COLLECTION
 // ============================================
 
-import { 
-  db, 
-  collection, 
-  addDoc, 
-  doc, 
-  getDoc, 
-  updateDoc, 
-  serverTimestamp, 
-  runTransaction,
-  writeBatch
-} from './firebase-config.js'; // Adjust path as needed
+/**
+ * Helper function for logging (non-blocking)
+ */
+async function logDistributionActivity(logData) {
+  try {
+    const activityRef = collection(db, 'activityLogs');
+    await addDoc(activityRef, {
+      ...logData,
+      timestamp: serverTimestamp(),
+      environment: 'production'
+    });
+  } catch (error) {
+    // Silent fail - don't break main flow
+    console.error('Failed to log activity:', error);
+  }
+}
 
 /**
  * Adds a new distribution with proper inventory and agent balance updates
@@ -438,9 +439,11 @@ export async function addDistribution(distributionData) {
       });
       
       // 4. Create distribution record
-      const distributionRef = collection(db, 'distributions');
+      const distributionRef = doc(collection(db, 'distributions')); // Create a document reference
       const distributionDoc = {
         ...distributionData,
+        agentId: distributionData.agentId,
+        agentName: distributionData.agentName || agentDoc.data().name || '',
         items: stockUpdates.map(item => ({
           warehouseStockId: item.warehouseStockId,
           hairBrand: item.hairBrand,
@@ -450,22 +453,22 @@ export async function addDistribution(distributionData) {
           unitAgentPrice: item.unitAgentPrice,
           unitPrice: item.unitPrice,
           importPrice: item.importPrice,
-          returnedQuantity: 0, // Track returns per item
+          returnedQuantity: 0,
         })),
         totalQuantity,
         totalAgentPrice,
         distributionDate: distributionData.distributionDate || serverTimestamp(),
         status: 'completed',
-        returnedQuantity: 0, // Total returned quantity across all items
+        returnedQuantity: 0,
         createdAt: serverTimestamp(),
         lastUpdated: serverTimestamp(),
         createdBy: distributionData.createdBy || 'system',
         notes: distributionData.notes || '',
       };
       
-      const docRef = await transaction.set(distributionRef, distributionDoc);
+      transaction.set(distributionRef, distributionDoc);
       
-      return { id: docRef.id, totalAgentPrice };
+      return { id: distributionRef.id, totalAgentPrice };
     });
     
     // Log successful distribution (async, don't await)
@@ -496,8 +499,6 @@ export async function addDistribution(distributionData) {
 
 export async function getDistributions(agentId = null) {
   try {
-    // NOTE: No orderBy here — avoids needing a composite Firestore index
-    // (where agentId + orderBy distributionDate). We sort in JS instead.
     let q;
     if (agentId) {
       q = query(collection(db, 'distributions'), where('agentId', '==', agentId));
@@ -509,7 +510,7 @@ export async function getDistributions(agentId = null) {
     querySnapshot.forEach((doc) => {
       distributions.push({ id: doc.id, ...doc.data() });
     });
-    // Sort descending — handles both string dates ("2026-03-01") and Timestamps
+    // Sort descending
     distributions.sort((a, b) => {
       const da = a.distributionDate?.toDate ? a.distributionDate.toDate() : new Date(a.distributionDate || 0);
       const db2 = b.distributionDate?.toDate ? b.distributionDate.toDate() : new Date(b.distributionDate || 0);
@@ -534,7 +535,6 @@ export async function addSale(saleData) {
       paymentStatus: saleData.paymentStatus || 'pending'
     });
 
-    // Update selling agent's totalCommission
     if (saleData.agentId && saleData.agentCommission) {
       const agentRef = doc(db, 'agents', saleData.agentId);
       const agentDoc = await getDoc(agentRef);
@@ -551,11 +551,8 @@ export async function addSale(saleData) {
   }
 }
 
-
 export async function getSales(agentId = null) {
   try {
-    // NOTE: No orderBy on filtered query — avoids composite index requirement.
-    // Sort by saleDate in JS instead.
     let q;
     if (agentId) {
       q = query(collection(db, 'sales'), where('agentId', '==', agentId));
@@ -637,7 +634,6 @@ export async function addPayment(paymentData) {
 
 export async function getPayments(agentId = null) {
   try {
-    // NOTE: No orderBy on filtered query — avoids composite index requirement.
     let q;
     if (agentId) {
       q = query(collection(db, 'payments'), where('agentId', '==', agentId));
@@ -712,43 +708,13 @@ export async function markNotificationAsRead(notificationId) {
 }
 
 // ============================================
-// CALCULATION HELPERS
-// ============================================
-
-export function calculateCompanyProfit(agentPrice, importPrice, quantity) {
-  return (agentPrice - importPrice) * quantity;
-}
-
-export function calculateAgentCommission(sellingPrice, agentPrice, quantity) {
-  return (sellingPrice - agentPrice) * quantity;
-}
-
-export function calculateTotalAgentPrice(agentPrice, quantity, miscFee = 0) {
-  return (agentPrice * quantity) + miscFee;
-}
-
-export function calculateTotalSellingPrice(sellingPrice, quantity) {
-  return sellingPrice * quantity;
-}
-
-// ============================================
 // STOCK RETURNS
 // ============================================
-// ADD THIS FUNCTION to firestore-db.js
 
-// ============================================
-// STOCK RETURNS
-// ============================================
-// ADD THIS FUNCTION to firestore-db.js
-// ============================================
-// STOCK RETURNS
-// ============================================
-// ADD THIS FUNCTION to firestore-db.js
 /**
  * Returns stock from agent to warehouse with proper validation and updates
  * Uses Firestore transactions for data consistency
  */
-
 export async function returnStock(returnData) {
   // Input validation
   if (!returnData) {
@@ -798,135 +764,81 @@ export async function returnStock(returnData) {
         throw new Error(`Cannot return more than ${maxReturnable} units (already returned: ${totalReturned})`);
       }
       
-      // 2. Calculate returns per item (proportional or specified)
+      // 2. Calculate returns per item
       let remainingToReturn = returnData.returnQuantity;
       let totalRefund = 0;
       const updatedItems = [...distribution.items];
       
-      // If specific items to return are provided
-      if (returnData.items && Array.isArray(returnData.items) && returnData.items.length > 0) {
-        // Process specific items
-        for (const returnItem of returnData.items) {
-          if (remainingToReturn <= 0) break;
-          
-          const itemIndex = updatedItems.findIndex(
-            item => item.warehouseStockId === returnItem.warehouseStockId
-          );
-          
-          if (itemIndex === -1) {
-            throw new Error(`Item with stock ID ${returnItem.warehouseStockId} not found in distribution`);
-          }
-          
-          const item = updatedItems[itemIndex];
-          const itemReturned = item.returnedQuantity || 0;
-          const itemMaxReturn = item.quantity - itemReturned;
-          
-          if (returnItem.quantity > itemMaxReturn) {
-            throw new Error(`Cannot return more than ${itemMaxReturn} units for ${item.hairBrand}`);
-          }
-          
+      // Proportional return across all items
+      const returnRatio = returnData.returnQuantity / totalDistributed;
+      
+      for (let i = 0; i < updatedItems.length; i++) {
+        if (remainingToReturn <= 0) break;
+        
+        const item = updatedItems[i];
+        const itemReturned = item.returnedQuantity || 0;
+        const itemAvailable = item.quantity - itemReturned;
+        let itemReturnQty = Math.floor(itemAvailable * returnRatio);
+        
+        // Ensure we don't exceed remaining
+        itemReturnQty = Math.min(itemReturnQty, remainingToReturn);
+        itemReturnQty = Math.min(itemReturnQty, itemAvailable);
+        
+        if (itemReturnQty > 0) {
           // Update warehouse stock
           const warehouseRef = doc(db, 'warehouse', item.warehouseStockId);
           const warehouseSnap = await transaction.get(warehouseRef);
           
-          if (!warehouseSnap.exists()) {
-            throw new Error(`Warehouse stock not found for ID: ${item.warehouseStockId}`);
+          if (warehouseSnap.exists()) {
+            const wData = warehouseSnap.data();
+            const newAvailable = (wData.availableQuantity || 0) + itemReturnQty;
+            const newDistributed = Math.max(0, (wData.distributedQuantity || 0) - itemReturnQty);
+            
+            transaction.update(warehouseRef, {
+              availableQuantity: newAvailable,
+              distributedQuantity: newDistributed,
+              availableTotalValue: newAvailable * (wData.importPrice || 0),
+              status: newAvailable === 0 ? 'out' : newAvailable < 10 ? 'low' : 'available',
+              lastUpdated: serverTimestamp(),
+            });
           }
-          
-          const wData = warehouseSnap.data();
-          const newAvailable = (wData.availableQuantity || 0) + returnItem.quantity;
-          const newDistributed = Math.max(0, (wData.distributedQuantity || 0) - returnItem.quantity);
-          
-          transaction.update(warehouseRef, {
-            availableQuantity: newAvailable,
-            distributedQuantity: newDistributed,
-            availableTotalValue: newAvailable * (wData.importPrice || 0),
-            status: newAvailable === 0 ? 'out' : newAvailable < 10 ? 'low' : 'available',
-            lastUpdated: serverTimestamp(),
-            lastRestocked: serverTimestamp(),
-          });
           
           // Update item in distribution
-          item.returnedQuantity = (item.returnedQuantity || 0) + returnItem.quantity;
-          const itemRefund = returnItem.quantity * (item.unitAgentPrice || 0);
+          item.returnedQuantity = (item.returnedQuantity || 0) + itemReturnQty;
+          const itemRefund = itemReturnQty * (item.unitAgentPrice || 0);
           totalRefund += itemRefund;
-          remainingToReturn -= returnItem.quantity;
+          remainingToReturn -= itemReturnQty;
           
-          updatedItems[itemIndex] = item;
+          updatedItems[i] = item;
         }
-      } else {
-        // Proportional return across all items
-        const returnRatio = returnData.returnQuantity / totalDistributed;
+      }
+      
+      // Handle any remaining quantity (due to rounding)
+      if (remainingToReturn > 0 && updatedItems.length > 0) {
+        const lastItem = updatedItems[updatedItems.length - 1];
+        const lastItemAvailable = lastItem.quantity - (lastItem.returnedQuantity || 0);
+        const additionalReturn = Math.min(remainingToReturn, lastItemAvailable);
         
-        for (let i = 0; i < updatedItems.length; i++) {
-          if (remainingToReturn <= 0) break;
+        if (additionalReturn > 0) {
+          const warehouseRef = doc(db, 'warehouse', lastItem.warehouseStockId);
+          const warehouseSnap = await transaction.get(warehouseRef);
           
-          const item = updatedItems[i];
-          const itemReturned = item.returnedQuantity || 0;
-          const itemAvailable = item.quantity - itemReturned;
-          let itemReturnQty = Math.floor(itemAvailable * returnRatio);
-          
-          // Ensure we don't exceed remaining
-          itemReturnQty = Math.min(itemReturnQty, remainingToReturn);
-          itemReturnQty = Math.min(itemReturnQty, itemAvailable);
-          
-          if (itemReturnQty > 0) {
-            // Update warehouse stock
-            const warehouseRef = doc(db, 'warehouse', item.warehouseStockId);
-            const warehouseSnap = await transaction.get(warehouseRef);
+          if (warehouseSnap.exists()) {
+            const wData = warehouseSnap.data();
+            const newAvailable = (wData.availableQuantity || 0) + additionalReturn;
+            const newDistributed = Math.max(0, (wData.distributedQuantity || 0) - additionalReturn);
             
-            if (warehouseSnap.exists()) {
-              const wData = warehouseSnap.data();
-              const newAvailable = (wData.availableQuantity || 0) + itemReturnQty;
-              const newDistributed = Math.max(0, (wData.distributedQuantity || 0) - itemReturnQty);
-              
-              transaction.update(warehouseRef, {
-                availableQuantity: newAvailable,
-                distributedQuantity: newDistributed,
-                availableTotalValue: newAvailable * (wData.importPrice || 0),
-                status: newAvailable === 0 ? 'out' : newAvailable < 10 ? 'low' : 'available',
-                lastUpdated: serverTimestamp(),
-                lastRestocked: serverTimestamp(),
-              });
-            }
-            
-            // Update item in distribution
-            item.returnedQuantity = (item.returnedQuantity || 0) + itemReturnQty;
-            const itemRefund = itemReturnQty * (item.unitAgentPrice || 0);
-            totalRefund += itemRefund;
-            remainingToReturn -= itemReturnQty;
-            
-            updatedItems[i] = item;
+            transaction.update(warehouseRef, {
+              availableQuantity: newAvailable,
+              distributedQuantity: newDistributed,
+              availableTotalValue: newAvailable * (wData.importPrice || 0),
+              lastUpdated: serverTimestamp(),
+            });
           }
-        }
-        
-        // Handle any remaining quantity (due to rounding)
-        if (remainingToReturn > 0 && updatedItems.length > 0) {
-          const lastItem = updatedItems[updatedItems.length - 1];
-          const lastItemAvailable = lastItem.quantity - (lastItem.returnedQuantity || 0);
-          const additionalReturn = Math.min(remainingToReturn, lastItemAvailable);
           
-          if (additionalReturn > 0) {
-            const warehouseRef = doc(db, 'warehouse', lastItem.warehouseStockId);
-            const warehouseSnap = await transaction.get(warehouseRef);
-            
-            if (warehouseSnap.exists()) {
-              const wData = warehouseSnap.data();
-              const newAvailable = (wData.availableQuantity || 0) + additionalReturn;
-              const newDistributed = Math.max(0, (wData.distributedQuantity || 0) - additionalReturn);
-              
-              transaction.update(warehouseRef, {
-                availableQuantity: newAvailable,
-                distributedQuantity: newDistributed,
-                availableTotalValue: newAvailable * (wData.importPrice || 0),
-                lastUpdated: serverTimestamp(),
-              });
-            }
-            
-            lastItem.returnedQuantity = (lastItem.returnedQuantity || 0) + additionalReturn;
-            totalRefund += additionalReturn * (lastItem.unitAgentPrice || 0);
-            updatedItems[updatedItems.length - 1] = lastItem;
-          }
+          lastItem.returnedQuantity = (lastItem.returnedQuantity || 0) + additionalReturn;
+          totalRefund += additionalReturn * (lastItem.unitAgentPrice || 0);
+          updatedItems[updatedItems.length - 1] = lastItem;
         }
       }
       
@@ -944,8 +856,6 @@ export async function returnStock(returnData) {
       transaction.update(agentRef, {
         totalOwed: newOwed,
         lastUpdated: serverTimestamp(),
-        totalReturns: (agentSnap.data().totalReturns || 0) + returnData.returnQuantity,
-        totalRefunded: (agentSnap.data().totalRefunded || 0) + totalRefund,
       });
       
       // 4. Update distribution record
@@ -957,11 +867,10 @@ export async function returnStock(returnData) {
         returnedQuantity: newTotalReturned,
         status: isFullyReturned ? 'fully_returned' : 'partially_returned',
         lastUpdated: serverTimestamp(),
-        lastReturnDate: serverTimestamp(),
       });
       
       // 5. Create return record
-      const returnRef = collection(db, 'stockReturns');
+      const returnRef = doc(collection(db, 'stockReturns'));
       const returnRecord = {
         agentId: returnData.agentId,
         agentName: returnData.agentName || agentSnap.data().name || '',
@@ -970,21 +879,11 @@ export async function returnStock(returnData) {
         totalRefund,
         returnDate: serverTimestamp(),
         recordedBy: returnData.recordedBy || 'system',
-        returnType: returnData.items ? 'specific' : 'proportional',
-        items: updatedItems.filter(item => (item.returnedQuantity || 0) > 0).map(item => ({
-          warehouseStockId: item.warehouseStockId,
-          hairBrand: item.hairBrand,
-          color: item.color,
-          length: item.length,
-          quantityReturned: (item.returnedQuantity || 0) - (distribution.items.find(i => i.warehouseStockId === item.warehouseStockId)?.returnedQuantity || 0),
-          unitAgentPrice: item.unitAgentPrice,
-          refundAmount: ((item.returnedQuantity || 0) - (distribution.items.find(i => i.warehouseStockId === item.warehouseStockId)?.returnedQuantity || 0)) * (item.unitAgentPrice || 0)
-        })),
         notes: returnData.notes || '',
         createdAt: serverTimestamp(),
       };
       
-      await transaction.set(returnRef, returnRecord);
+      transaction.set(returnRef, returnRecord);
       
       return { 
         totalRefund, 
@@ -1019,65 +918,25 @@ export async function returnStock(returnData) {
     };
   }
 }
-/**
- * Async logging utility (non-blocking)
- */
-async function logDistributionActivity(logData) {
-  try {
-    const activityRef = collection(db, 'activityLogs');
-    await addDoc(activityRef, {
-      ...logData,
-      timestamp: serverTimestamp(),
-      environment: process.env.NODE_ENV || 'production'
-    });
-  } catch (error) {
-    // Silent fail - don't break main flow
-    console.error('Failed to log activity:', error);
-  }
+
+// ============================================
+// CALCULATION HELPERS
+// ============================================
+
+export function calculateCompanyProfit(agentPrice, importPrice, quantity) {
+  return (agentPrice - importPrice) * quantity;
 }
 
-/**
- * Get distribution details with return information
- */
-export async function getDistributionDetails(distributionId) {
-  try {
-    if (!distributionId) {
-      throw new Error('Distribution ID is required');
-    }
-    
-    const distRef = doc(db, 'distributions', distributionId);
-    const distSnap = await getDoc(distRef);
-    
-    if (!distSnap.exists()) {
-      return { success: false, error: 'Distribution not found' };
-    }
-    
-    const distribution = { id: distSnap.id, ...distSnap.data() };
-    const totalDistributed = distribution.totalQuantity || 
-      distribution.items.reduce((sum, item) => sum + item.quantity, 0);
-    const totalReturned = distribution.returnedQuantity || 0;
-    
-    return {
-      success: true,
-      data: {
-        ...distribution,
-        summary: {
-          totalDistributed,
-          totalReturned,
-          remainingOutstanding: totalDistributed - totalReturned,
-          returnPercentage: totalDistributed > 0 ? (totalReturned / totalDistributed) * 100 : 0,
-          isFullyReturned: totalReturned >= totalDistributed
-        },
-        items: distribution.items.map(item => ({
-          ...item,
-          isFullyReturned: (item.returnedQuantity || 0) >= item.quantity,
-          remainingQuantity: item.quantity - (item.returnedQuantity || 0)
-        }))
-      }
-    };
-  } catch (error) {
-    console.error('Error getting distribution details:', error);
-    return { success: false, error: error.message };
-  }
+export function calculateAgentCommission(sellingPrice, agentPrice, quantity) {
+  return (sellingPrice - agentPrice) * quantity;
 }
+
+export function calculateTotalAgentPrice(agentPrice, quantity, miscFee = 0) {
+  return (agentPrice * quantity) + miscFee;
+}
+
+export function calculateTotalSellingPrice(sellingPrice, quantity) {
+  return sellingPrice * quantity;
+}
+
 console.log('✅ Firestore database module loaded (v2.2)');
