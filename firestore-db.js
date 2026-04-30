@@ -16,8 +16,7 @@ import {
   orderBy,
   limit,
   Timestamp,
-  serverTimestamp,
-  runTransaction  // Added this
+  serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // ============================================
@@ -40,7 +39,6 @@ export async function addAgent(agentData) {
     return { success: false, error: error.message };
   }
 }
-
 export async function getAgent(agentId) {
   try {
     const docRef = doc(db, 'agents', agentId);
@@ -84,6 +82,7 @@ export async function updateAgent(agentId, agentData) {
   }
 }
 
+// ✅ Actually deletes the document permanently
 export async function deleteAgent(agentId) {
   try {
     const docRef = doc(db, 'agents', agentId);
@@ -176,6 +175,7 @@ export async function deleteProduct(productId) {
   }
 }
 
+// Helper: get unique hair brands
 export async function getHairBrands() {
   try {
     const result = await getAllProducts();
@@ -190,6 +190,7 @@ export async function getHairBrands() {
   }
 }
 
+// Helper: get colors for a brand
 export async function getColorsByBrand(hairBrand) {
   try {
     const result = await getProductsByBrand(hairBrand);
@@ -204,6 +205,7 @@ export async function getColorsByBrand(hairBrand) {
   }
 }
 
+// Helper: get lengths for a brand and color
 export async function getLengthsByBrandAndColor(hairBrand, color) {
   try {
     const q = query(
@@ -224,6 +226,7 @@ export async function getLengthsByBrandAndColor(hairBrand, color) {
   }
 }
 
+// Helper: get a specific product by brand + color + length
 export async function getProductBySpecs(hairBrand, color, length) {
   try {
     const q = query(
@@ -317,6 +320,7 @@ export async function updateWarehouseStock(stockId, updateData) {
   }
 }
 
+// Permanently delete a warehouse stock entry
 export async function deleteWarehouseStock(stockId) {
   try {
     await deleteDoc(doc(db, 'warehouse', stockId));
@@ -331,174 +335,52 @@ export async function deleteWarehouseStock(stockId) {
 // DISTRIBUTIONS COLLECTION
 // ============================================
 
-/**
- * Helper function for logging (non-blocking)
- */
-async function logDistributionActivity(logData) {
-  try {
-    const activityRef = collection(db, 'activityLogs');
-    await addDoc(activityRef, {
-      ...logData,
-      timestamp: serverTimestamp(),
-      environment: 'production'
-    });
-  } catch (error) {
-    // Silent fail - don't break main flow
-    console.error('Failed to log activity:', error);
-  }
-}
-
-/**
- * Adds a new distribution with proper inventory and agent balance updates
- * Uses Firestore transactions for data consistency
- */
 export async function addDistribution(distributionData) {
-  // Input validation
-  if (!distributionData) {
-    return { success: false, error: 'Distribution data is required' };
-  }
-  
-  if (!distributionData.agentId) {
-    return { success: false, error: 'Agent ID is required' };
-  }
-  
-  if (!distributionData.items || !Array.isArray(distributionData.items) || distributionData.items.length === 0) {
-    return { success: false, error: 'At least one item is required for distribution' };
-  }
-  
-  // Validate each item
-  for (const item of distributionData.items) {
-    if (!item.warehouseStockId) {
-      return { success: false, error: 'Warehouse stock ID is required for each item' };
-    }
-    if (!item.quantity || item.quantity <= 0) {
-      return { success: false, error: 'Valid quantity is required for each item' };
-    }
-    if (item.quantity > (item.availableQuantity || 0)) {
-      return { 
-        success: false, 
-        error: `Insufficient stock for ${item.hairBrand || 'item'}. Available: ${item.availableQuantity || 0}, Requested: ${item.quantity}` 
-      };
-    }
-  }
-  
   try {
-    // Use transaction for consistency across multiple documents
-    const result = await runTransaction(db, async (transaction) => {
-      // 1. Verify and update warehouse stock for all items
-      const stockUpdates = [];
-      for (const item of distributionData.items) {
-        const stockRef = doc(db, 'warehouse', item.warehouseStockId);
-        const stockDoc = await transaction.get(stockRef);
-        
-        if (!stockDoc.exists()) {
-          throw new Error(`Warehouse stock not found for ID: ${item.warehouseStockId}`);
-        }
-        
-        const currentData = stockDoc.data();
-        const availableQuantity = currentData.availableQuantity || 0;
-        
-        if (availableQuantity < item.quantity) {
-          throw new Error(`Insufficient stock for ${item.hairBrand || 'item'}. Available: ${availableQuantity}, Required: ${item.quantity}`);
-        }
-        
-        const newAvailable = availableQuantity - item.quantity;
-        const newDistributed = (currentData.distributedQuantity || 0) + item.quantity;
-        
-        transaction.update(stockRef, {
-          availableQuantity: newAvailable,
-          distributedQuantity: newDistributed,
-          availableTotalValue: newAvailable * (currentData.importPrice || 0),
-          status: newAvailable === 0 ? 'out' : newAvailable < 10 ? 'low' : 'available',
-          lastUpdated: serverTimestamp(),
-        });
-        
-        stockUpdates.push({
-          ...item,
-          importPrice: currentData.importPrice,
-          unitPrice: item.unitAgentPrice || currentData.unitPrice
-        });
-      }
-      
-      // 2. Calculate totals
-      const totalQuantity = stockUpdates.reduce((sum, item) => sum + item.quantity, 0);
-      const totalAgentPrice = stockUpdates.reduce((sum, item) => sum + (item.unitAgentPrice * item.quantity), 0);
-      
-      // 3. Update agent's total owed
-      const agentRef = doc(db, 'agents', distributionData.agentId);
-      const agentDoc = await transaction.get(agentRef);
-      
-      if (!agentDoc.exists()) {
-        throw new Error(`Agent not found with ID: ${distributionData.agentId}`);
-      }
-      
-      const currentOwed = agentDoc.data().totalOwed || 0;
-      transaction.update(agentRef, {
-        totalOwed: currentOwed + totalAgentPrice,
-        lastUpdated: serverTimestamp(),
-      });
-      
-      // 4. Create distribution record
-      const distributionRef = doc(collection(db, 'distributions')); // Create a document reference
-      const distributionDoc = {
-        ...distributionData,
-        agentId: distributionData.agentId,
-        agentName: distributionData.agentName || agentDoc.data().name || '',
-        items: stockUpdates.map(item => ({
-          warehouseStockId: item.warehouseStockId,
-          hairBrand: item.hairBrand,
-          color: item.color,
-          length: item.length,
-          quantity: item.quantity,
-          unitAgentPrice: item.unitAgentPrice,
-          unitPrice: item.unitPrice,
-          importPrice: item.importPrice,
-          returnedQuantity: 0,
-        })),
-        totalQuantity,
-        totalAgentPrice,
-        distributionDate: distributionData.distributionDate || serverTimestamp(),
-        status: 'completed',
-        returnedQuantity: 0,
-        createdAt: serverTimestamp(),
-        lastUpdated: serverTimestamp(),
-        createdBy: distributionData.createdBy || 'system',
-        notes: distributionData.notes || '',
-      };
-      
-      transaction.set(distributionRef, distributionDoc);
-      
-      return { id: distributionRef.id, totalAgentPrice };
+    const docRef = await addDoc(collection(db, 'distributions'), {
+      ...distributionData,
+      distributionDate: distributionData.distributionDate || serverTimestamp(),
+      status: 'completed'
     });
     
-    // Log successful distribution (async, don't await)
-    logDistributionActivity({
-      action: 'DISTRIBUTION_CREATED',
-      distributionId: result.id,
-      agentId: distributionData.agentId,
-      totalAmount: result.totalAgentPrice,
-      itemsCount: distributionData.items.length
-    }).catch(console.error);
+    if (distributionData.items && distributionData.items.length > 0) {
+      for (const item of distributionData.items) {
+        if (item.warehouseStockId) {
+          const stockRef = doc(db, 'warehouse', item.warehouseStockId);
+          const stockDoc = await getDoc(stockRef);
+          if (stockDoc.exists()) {
+            const currentData    = stockDoc.data();
+            const newAvailable   = currentData.availableQuantity   - item.quantity;
+            const newDistributed = currentData.distributedQuantity + item.quantity;
+            await updateWarehouseStock(item.warehouseStockId, {
+              availableQuantity:   newAvailable,
+              distributedQuantity: newDistributed
+            });
+          }
+        }
+      }
+    }
     
-    return { 
-      success: true, 
-      id: result.id,
-      totalAgentPrice: result.totalAgentPrice,
-      message: 'Distribution completed successfully'
-    };
+    if (distributionData.agentId && distributionData.totalAgentPrice) {
+      const agentRef = doc(db, 'agents', distributionData.agentId);
+      const agentDoc = await getDoc(agentRef);
+      if (agentDoc.exists()) {
+        const currentOwed = agentDoc.data().totalOwed || 0;
+        await updateDoc(agentRef, { totalOwed: currentOwed + distributionData.totalAgentPrice });
+      }
+    }
     
+    return { success: true, id: docRef.id };
   } catch (error) {
     console.error('Error adding distribution:', error);
-    return { 
-      success: false, 
-      error: error.message,
-      code: error.code || 'DISTRIBUTION_ERROR'
-    };
+    return { success: false, error: error.message };
   }
 }
 
 export async function getDistributions(agentId = null) {
   try {
+    // NOTE: No orderBy here — avoids needing a composite Firestore index
+    // (where agentId + orderBy distributionDate). We sort in JS instead.
     let q;
     if (agentId) {
       q = query(collection(db, 'distributions'), where('agentId', '==', agentId));
@@ -510,7 +392,7 @@ export async function getDistributions(agentId = null) {
     querySnapshot.forEach((doc) => {
       distributions.push({ id: doc.id, ...doc.data() });
     });
-    // Sort descending
+    // Sort descending — handles both string dates ("2026-03-01") and Timestamps
     distributions.sort((a, b) => {
       const da = a.distributionDate?.toDate ? a.distributionDate.toDate() : new Date(a.distributionDate || 0);
       const db2 = b.distributionDate?.toDate ? b.distributionDate.toDate() : new Date(b.distributionDate || 0);
@@ -535,6 +417,7 @@ export async function addSale(saleData) {
       paymentStatus: saleData.paymentStatus || 'pending'
     });
 
+    // Update selling agent's totalCommission
     if (saleData.agentId && saleData.agentCommission) {
       const agentRef = doc(db, 'agents', saleData.agentId);
       const agentDoc = await getDoc(agentRef);
@@ -551,8 +434,11 @@ export async function addSale(saleData) {
   }
 }
 
+
 export async function getSales(agentId = null) {
   try {
+    // NOTE: No orderBy on filtered query — avoids composite index requirement.
+    // Sort by saleDate in JS instead.
     let q;
     if (agentId) {
       q = query(collection(db, 'sales'), where('agentId', '==', agentId));
@@ -634,6 +520,7 @@ export async function addPayment(paymentData) {
 
 export async function getPayments(agentId = null) {
   try {
+    // NOTE: No orderBy on filtered query — avoids composite index requirement.
     let q;
     if (agentId) {
       q = query(collection(db, 'payments'), where('agentId', '==', agentId));
@@ -708,218 +595,6 @@ export async function markNotificationAsRead(notificationId) {
 }
 
 // ============================================
-// STOCK RETURNS
-// ============================================
-
-/**
- * Returns stock from agent to warehouse with proper validation and updates
- * Uses Firestore transactions for data consistency
- */
-export async function returnStock(returnData) {
-  // Input validation
-  if (!returnData) {
-    return { success: false, error: 'Return data is required' };
-  }
-  
-  if (!returnData.distributionId) {
-    return { success: false, error: 'Distribution ID is required' };
-  }
-  
-  if (!returnData.agentId) {
-    return { success: false, error: 'Agent ID is required' };
-  }
-  
-  if (!returnData.returnQuantity || returnData.returnQuantity <= 0) {
-    return { success: false, error: 'Valid return quantity is required' };
-  }
-  
-  try {
-    const result = await runTransaction(db, async (transaction) => {
-      // 1. Get and validate distribution record
-      const distRef = doc(db, 'distributions', returnData.distributionId);
-      const distSnap = await transaction.get(distRef);
-      
-      if (!distSnap.exists()) {
-        throw new Error('Distribution record not found');
-      }
-      
-      const distribution = distSnap.data();
-      
-      // Verify agent matches
-      if (distribution.agentId !== returnData.agentId) {
-        throw new Error('Distribution does not belong to this agent');
-      }
-      
-      // Check if already fully returned
-      const totalReturned = distribution.returnedQuantity || 0;
-      const totalDistributed = distribution.totalQuantity || 
-        distribution.items.reduce((sum, item) => sum + item.quantity, 0);
-      const maxReturnable = totalDistributed - totalReturned;
-      
-      if (maxReturnable <= 0) {
-        throw new Error('All items from this distribution have already been returned');
-      }
-      
-      if (returnData.returnQuantity > maxReturnable) {
-        throw new Error(`Cannot return more than ${maxReturnable} units (already returned: ${totalReturned})`);
-      }
-      
-      // 2. Calculate returns per item
-      let remainingToReturn = returnData.returnQuantity;
-      let totalRefund = 0;
-      const updatedItems = [...distribution.items];
-      
-      // Proportional return across all items
-      const returnRatio = returnData.returnQuantity / totalDistributed;
-      
-      for (let i = 0; i < updatedItems.length; i++) {
-        if (remainingToReturn <= 0) break;
-        
-        const item = updatedItems[i];
-        const itemReturned = item.returnedQuantity || 0;
-        const itemAvailable = item.quantity - itemReturned;
-        let itemReturnQty = Math.floor(itemAvailable * returnRatio);
-        
-        // Ensure we don't exceed remaining
-        itemReturnQty = Math.min(itemReturnQty, remainingToReturn);
-        itemReturnQty = Math.min(itemReturnQty, itemAvailable);
-        
-        if (itemReturnQty > 0) {
-          // Update warehouse stock
-          const warehouseRef = doc(db, 'warehouse', item.warehouseStockId);
-          const warehouseSnap = await transaction.get(warehouseRef);
-          
-          if (warehouseSnap.exists()) {
-            const wData = warehouseSnap.data();
-            const newAvailable = (wData.availableQuantity || 0) + itemReturnQty;
-            const newDistributed = Math.max(0, (wData.distributedQuantity || 0) - itemReturnQty);
-            
-            transaction.update(warehouseRef, {
-              availableQuantity: newAvailable,
-              distributedQuantity: newDistributed,
-              availableTotalValue: newAvailable * (wData.importPrice || 0),
-              status: newAvailable === 0 ? 'out' : newAvailable < 10 ? 'low' : 'available',
-              lastUpdated: serverTimestamp(),
-            });
-          }
-          
-          // Update item in distribution
-          item.returnedQuantity = (item.returnedQuantity || 0) + itemReturnQty;
-          const itemRefund = itemReturnQty * (item.unitAgentPrice || 0);
-          totalRefund += itemRefund;
-          remainingToReturn -= itemReturnQty;
-          
-          updatedItems[i] = item;
-        }
-      }
-      
-      // Handle any remaining quantity (due to rounding)
-      if (remainingToReturn > 0 && updatedItems.length > 0) {
-        const lastItem = updatedItems[updatedItems.length - 1];
-        const lastItemAvailable = lastItem.quantity - (lastItem.returnedQuantity || 0);
-        const additionalReturn = Math.min(remainingToReturn, lastItemAvailable);
-        
-        if (additionalReturn > 0) {
-          const warehouseRef = doc(db, 'warehouse', lastItem.warehouseStockId);
-          const warehouseSnap = await transaction.get(warehouseRef);
-          
-          if (warehouseSnap.exists()) {
-            const wData = warehouseSnap.data();
-            const newAvailable = (wData.availableQuantity || 0) + additionalReturn;
-            const newDistributed = Math.max(0, (wData.distributedQuantity || 0) - additionalReturn);
-            
-            transaction.update(warehouseRef, {
-              availableQuantity: newAvailable,
-              distributedQuantity: newDistributed,
-              availableTotalValue: newAvailable * (wData.importPrice || 0),
-              lastUpdated: serverTimestamp(),
-            });
-          }
-          
-          lastItem.returnedQuantity = (lastItem.returnedQuantity || 0) + additionalReturn;
-          totalRefund += additionalReturn * (lastItem.unitAgentPrice || 0);
-          updatedItems[updatedItems.length - 1] = lastItem;
-        }
-      }
-      
-      // 3. Update agent's total owed
-      const agentRef = doc(db, 'agents', returnData.agentId);
-      const agentSnap = await transaction.get(agentRef);
-      
-      if (!agentSnap.exists()) {
-        throw new Error(`Agent not found with ID: ${returnData.agentId}`);
-      }
-      
-      const currentOwed = agentSnap.data().totalOwed || 0;
-      const newOwed = Math.max(0, currentOwed - totalRefund);
-      
-      transaction.update(agentRef, {
-        totalOwed: newOwed,
-        lastUpdated: serverTimestamp(),
-      });
-      
-      // 4. Update distribution record
-      const newTotalReturned = (distribution.returnedQuantity || 0) + returnData.returnQuantity;
-      const isFullyReturned = newTotalReturned >= totalDistributed;
-      
-      transaction.update(distRef, {
-        items: updatedItems,
-        returnedQuantity: newTotalReturned,
-        status: isFullyReturned ? 'fully_returned' : 'partially_returned',
-        lastUpdated: serverTimestamp(),
-      });
-      
-      // 5. Create return record
-      const returnRef = doc(collection(db, 'stockReturns'));
-      const returnRecord = {
-        agentId: returnData.agentId,
-        agentName: returnData.agentName || agentSnap.data().name || '',
-        distributionId: returnData.distributionId,
-        returnQuantity: returnData.returnQuantity,
-        totalRefund,
-        returnDate: serverTimestamp(),
-        recordedBy: returnData.recordedBy || 'system',
-        notes: returnData.notes || '',
-        createdAt: serverTimestamp(),
-      };
-      
-      transaction.set(returnRef, returnRecord);
-      
-      return { 
-        totalRefund, 
-        newOwed,
-        returnedQuantity: returnData.returnQuantity,
-        isFullyReturned 
-      };
-    });
-    
-    // Log successful return (async)
-    logDistributionActivity({
-      action: 'STOCK_RETURNED',
-      distributionId: returnData.distributionId,
-      agentId: returnData.agentId,
-      returnQuantity: result.returnedQuantity,
-      totalRefund: result.totalRefund,
-      newBalance: result.newOwed
-    }).catch(console.error);
-    
-    return { 
-      success: true, 
-      ...result,
-      message: result.isFullyReturned ? 'All items returned successfully' : 'Stock returned successfully'
-    };
-    
-  } catch (error) {
-    console.error('Error returning stock:', error);
-    return { 
-      success: false, 
-      error: error.message,
-      code: error.code || 'RETURN_ERROR'
-    };
-  }
-}
-
-// ============================================
 // CALCULATION HELPERS
 // ============================================
 
@@ -939,4 +614,109 @@ export function calculateTotalSellingPrice(sellingPrice, quantity) {
   return sellingPrice * quantity;
 }
 
+// ============================================
+// STOCK RETURNS
+// ============================================
+// ADD THIS FUNCTION to firestore-db.js
+
+// ============================================
+// STOCK RETURNS
+// ============================================
+// ADD THIS FUNCTION to firestore-db.js
+// ============================================
+// STOCK RETURNS
+// ============================================
+// ADD THIS FUNCTION to firestore-db.js
+
+export async function returnStock(returnData) {
+  try {
+    const {
+      agentId,
+      agentName,
+      distributionId,
+      warehouseStockId,
+      hairBrand,
+      color,
+      length,
+      returnQuantity,
+      unitAgentPrice,
+    } = returnData;
+
+    // Guard: verify against the actual distribution record
+    if (!distributionId) {
+      return { success: false, error: 'Distribution ID is required.' };
+    }
+    const distRef  = doc(db, 'distributions', distributionId);
+    const distSnap = await getDoc(distRef);
+    if (!distSnap.exists()) {
+      return { success: false, error: 'Distribution record not found.' };
+    }
+    const originalQty  = distSnap.data().quantity         || 0;
+    const alreadyBack  = distSnap.data().returnedQuantity || 0;
+    const maxReturnable = Math.max(0, originalQty - alreadyBack);
+    if (returnQuantity > maxReturnable) {
+      return { success: false, error: `Cannot return more than the remaining returnable quantity (${maxReturnable} units).` };
+    }
+    if (returnQuantity < 1) {
+      return { success: false, error: 'Return quantity must be at least 1.' };
+    }
+
+    const totalRefund = returnQuantity * unitAgentPrice;
+
+    // 1. Restore warehouse stock
+    const warehouseRef = doc(db, 'warehouse', warehouseStockId);
+    const warehouseSnap = await getDoc(warehouseRef);
+    if (!warehouseSnap.exists()) {
+      return { success: false, error: 'Warehouse batch not found.' };
+    }
+    const wData = warehouseSnap.data();
+    const newAvailable   = (wData.availableQuantity   || 0) + returnQuantity;
+    const newDistributed = Math.max(0, (wData.distributedQuantity || 0) - returnQuantity);
+    await updateDoc(warehouseRef, {
+      availableQuantity:   newAvailable,
+      distributedQuantity: newDistributed,
+      availableTotalValue: newAvailable * (wData.importPrice || 0),
+      status:              newAvailable === 0 ? 'out' : newAvailable < 10 ? 'low' : 'available',
+      lastUpdated:         serverTimestamp(),
+    });
+
+    // 2. Decrease agent's totalOwed
+    const agentRef  = doc(db, 'agents', agentId);
+    const agentSnap = await getDoc(agentRef);
+    if (agentSnap.exists()) {
+      const currentOwed = agentSnap.data().totalOwed || 0;
+      await updateDoc(agentRef, {
+        totalOwed:   Math.max(0, currentOwed - totalRefund),
+        lastUpdated: serverTimestamp(),
+      });
+    }
+
+    // 3. Silent audit log in stockReturns collection
+    await addDoc(collection(db, 'stockReturns'), {
+      agentId,
+      agentName,
+      distributionId:  distributionId || null,
+      warehouseStockId,
+      hairBrand,
+      color,
+      length,
+      returnQuantity,
+      unitAgentPrice,
+      totalRefund,
+      returnDate:  serverTimestamp(),
+      recordedBy:  'admin',
+    });
+
+    // 4. Update distribution record to track cumulative returned quantity
+    await updateDoc(distRef, {
+      returnedQuantity: (distSnap.data().returnedQuantity || 0) + returnQuantity,
+      lastUpdated:      serverTimestamp(),
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error returning stock:', error);
+    return { success: false, error: error.message };
+  }
+}
 console.log('✅ Firestore database module loaded (v2.2)');
