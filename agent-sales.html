@@ -21,7 +21,7 @@
 
     .app{display:flex;min-height:100vh}
 
-    /* ── Sidebar ── */
+    /* Sidebar */
     .sidebar{width:250px;padding:20px 16px;background:linear-gradient(180deg,#1a0a3c,#120730);color:#fff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;flex-shrink:0}
     .brand{display:flex;gap:10px;align-items:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:12px}
     .brandIcon{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:18px;flex-shrink:0}
@@ -39,7 +39,7 @@
     .logoutBtn{width:100%;padding:9px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:transparent;color:rgba(255,255,255,.65);cursor:pointer;font-size:12px;display:flex;gap:8px;align-items:center;justify-content:center}
     .logoutBtn:hover{background:rgba(220,50,50,.2);color:#fff}
 
-    /* ── Main ── */
+    /* Main */
     .main{flex:1;padding:28px 28px 60px;min-width:0}
     @media(max-width:640px){.sidebar{display:none}.main{padding:16px 14px 40px}}
 
@@ -47,7 +47,7 @@
     .topBar h1{margin:0 0 4px;font-size:26px}
     .topBar p{margin:0;color:var(--muted);font-size:14px}
 
-    /* ── KPI cards ── */
+    /* KPIs */
     .kpis{display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:13px;margin-bottom:18px}
     @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:580px){.kpis{grid-template-columns:1fr}}
@@ -62,13 +62,13 @@
     .kpiVal{font-size:21px;font-weight:900;margin:0 0 3px;color:var(--text)}
     .kpiHint{font-size:12px;color:var(--muted);margin:0}
 
-    /* ── Panel ── */
+    /* Panel */
     .panel{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
     .panelHead{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
     .panelHead h3{margin:0;font-size:15px}
     .panelBody{padding:0}
 
-    /* ── Filters ── */
+    /* Filters */
     .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line);background:rgba(111,76,255,.02)}
     .searchWrap{position:relative;flex:1;min-width:180px}
     .searchWrap input{padding:9px 12px 9px 34px;border:2px solid #e5e7eb;border-radius:10px;font-size:13px;width:100%;outline:none}
@@ -81,7 +81,7 @@
     .exportBtn{padding:8px 14px;border-radius:10px;border:none;background:rgba(111,76,255,.1);color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
     .exportBtn:hover{background:rgba(111,76,255,.18)}
 
-    /* ── Table ── */
+    /* Table */
     .tableWrap{overflow-x:auto}
     table{width:100%;border-collapse:collapse;font-size:13px}
     thead tr{background:rgba(111,76,255,.04)}
@@ -93,11 +93,11 @@
     .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
     .badge.sale{background:rgba(16,185,129,.1);color:var(--success)}
 
-    /* ── Empty / loading ── */
+    /* Empty / loading */
     .empty{color:var(--muted);font-size:13px;text-align:center;padding:40px 0}
     .loading{color:var(--muted);font-size:13px;text-align:center;padding:40px 0}
 
-    /* ── Pagination ── */
+    /* Pagination */
     .pagination{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
     .pageBtn{padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:12px;font-weight:700;color:var(--text)}
     .pageBtn:hover:not(:disabled){border-color:var(--primary);color:var(--primary)}
@@ -233,6 +233,61 @@
   import { requireRole, logout, onAuthChange } from './auth.js';
   import { getAllAgents, getSales } from './firestore-db.js';
 
+  // ── Helper: Normalize sale to handle both old and new structure ─────────
+  function normalizeSale(sale) {
+    if (!sale) return null;
+    
+    // If sale already has items array, use it
+    if (sale.items && Array.isArray(sale.items) && sale.items.length > 0) {
+      // For multi-item sales, create a combined product name
+      const items = sale.items;
+      let combinedProduct = '';
+      let totalQuantity = 0;
+      let totalAmount = 0;
+      let totalCommission = 0;
+      
+      items.forEach(item => {
+        totalQuantity += item.quantity || 0;
+        totalAmount += (item.quantity || 0) * (item.sellingPrice || 0);
+        totalCommission += (item.quantity || 0) * (item.agentCommission || 0);
+      });
+      
+      // Create product summary
+      if (items.length === 1) {
+        const item = items[0];
+        combinedProduct = [item.hairBrand, item.color, item.length ? `${item.length}"` : ''].filter(Boolean).join(' ');
+      } else {
+        combinedProduct = `${items.length} items (${items.map(i => i.hairBrand).join(', ')})`;
+      }
+      
+      return {
+        ...sale,
+        // Flat fields for display (derived from items)
+        hairBrand: items[0]?.hairBrand,
+        color: items[0]?.color,
+        length: items[0]?.length,
+        quantity: totalQuantity,
+        sellingPrice: items[0]?.sellingPrice,
+        totalSellingPrice: sale.totalAmount || totalAmount,
+        agentCommission: sale.totalCommission || totalCommission,
+        productDisplay: combinedProduct,
+        isMultiItem: items.length > 1,
+        items: items
+      };
+    }
+    
+    // Old flat structure - convert to normalized form
+    return {
+      ...sale,
+      quantity: sale.quantity || 1,
+      sellingPrice: sale.sellingPrice || 0,
+      totalSellingPrice: sale.totalSellingPrice || (sale.quantity * sale.sellingPrice) || 0,
+      agentCommission: sale.agentCommission || 0,
+      productDisplay: [sale.hairBrand || sale.brand, sale.color, sale.length ? `${sale.length}"` : ''].filter(Boolean).join(' '),
+      isMultiItem: false
+    };
+  }
+
   // ── State ─────────────────────────────────────────────────────────────────
   let allSales     = [];
   let filtered     = [];
@@ -259,7 +314,6 @@
       const allRes = await getAllAgents();
       if (!allRes.success) return;
 
-      // Retry up to 3 times with backoff — Firestore can be slow on first load
       let allAgentsData = allRes.data;
       let match = allAgentsData.find(a => a.firebaseUid === user.uid);
       if (!match) {
@@ -289,7 +343,8 @@
   // ── Load ──────────────────────────────────────────────────────────────────
   async function loadSales(agentId) {
     const res = await getSales(agentId);
-    allSales  = res.success ? res.data : [];
+    // Normalize all sales to handle both old and new structures
+    allSales = res.success ? res.data.map(s => normalizeSale(s)) : [];
     applyFilters();
   }
 
@@ -315,14 +370,24 @@
         }
       }
 
-      // Search filter
+      // Search filter - search across items if multi-item
       if (searchTerm) {
         const q = searchTerm.toLowerCase();
-        const cust    = (s.customerName || s.customer || '').toLowerCase();
-        const brand   = (s.hairBrand || s.brand || '').toLowerCase();
-        const color   = (s.color || '').toLowerCase();
-        const length  = String(s.length || '').toLowerCase();
-        if (!cust.includes(q) && !brand.includes(q) && !color.includes(q) && !length.includes(q)) return false;
+        const cust = (s.customerName || s.customer || '').toLowerCase();
+        
+        // Check main product display
+        if (cust.includes(q)) return true;
+        if ((s.productDisplay || '').toLowerCase().includes(q)) return true;
+        
+        // For multi-item sales, search within items
+        if (s.items && Array.isArray(s.items)) {
+          for (const item of s.items) {
+            const itemProduct = [item.hairBrand, item.color, item.length ? `${item.length}"` : ''].filter(Boolean).join(' ');
+            if (itemProduct.toLowerCase().includes(q)) return true;
+          }
+        }
+        
+        return false;
       }
 
       return true;
@@ -372,15 +437,22 @@
     body.innerHTML = page.map(s => {
       const d       = toDate(s.saleDate);
       const dateStr = d ? d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
-      const product = [s.hairBrand || s.brand, s.color, s.length ? `${s.length}"` : ''].filter(Boolean).join(' ');
       const phone   = s.customerPhone ? `<br><small style="color:var(--muted)">${esc(s.customerPhone)}</small>` : '';
+      
+      // Product display - handle multi-item
+      let productDisplay = s.productDisplay || '—';
+      if (s.isMultiItem) {
+        productDisplay = `<span style="color:var(--primary);font-weight:600;">📦 ${productDisplay}</span>`;
+      }
+      
+      const unitPrice = s.sellingPrice || (s.totalSellingPrice / s.quantity) || 0;
 
       return `<tr>
         <td style="white-space:nowrap;color:var(--muted)">${dateStr}</td>
         <td><strong>${esc(s.customerName || s.customer || '—')}</strong>${phone}</td>
-        <td>${esc(product || '—')}</td>
+        <td>${productDisplay}</td>
         <td style="text-align:center">${s.quantity || 1}</td>
-        <td>GHS ${fmt(s.sellingPrice)}</td>
+        <td>GHS ${fmt(unitPrice)}</td>
         <td style="font-weight:700">GHS ${fmt(s.totalSellingPrice)}</td>
         <td><strong class="commVal">+GHS ${fmt(s.agentCommission)}</strong></td>
       </tr>`;
@@ -415,27 +487,37 @@
     if (currentPage < maxPage) { currentPage++; renderTable(); }
   });
 
-  // ── CSV Export ────────────────────────────────────────────────────────────
+  // ── CSV Export (handles multi-item sales) ────────────────────────────────
   document.getElementById('exportBtn').addEventListener('click', () => {
     if (!filtered.length) return;
+    
     const rows = [
       ['Date','Customer','Phone','Product','Qty','Unit Price','Total','Commission'],
       ...filtered.map(s => {
         const d       = toDate(s.saleDate);
         const dateStr = d ? d.toLocaleDateString('en-GB') : '';
-        const product = [s.hairBrand || s.brand, s.color, s.length ? `${s.length}"` : ''].filter(Boolean).join(' ');
+        const unitPrice = s.sellingPrice || (s.totalSellingPrice / s.quantity) || 0;
+        
+        let productStr = s.productDisplay || '';
+        if (s.isMultiItem && s.items) {
+          productStr = s.items.map(item => 
+            `${item.hairBrand} ${item.color} ${item.length}" x${item.quantity}`
+          ).join('; ');
+        }
+        
         return [
           dateStr,
           s.customerName || s.customer || '',
           s.customerPhone || '',
-          product,
+          productStr,
           s.quantity || 1,
-          s.sellingPrice || 0,
+          unitPrice,
           s.totalSellingPrice || 0,
           s.agentCommission || 0
         ];
       })
     ];
+    
     const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url  = URL.createObjectURL(blob);

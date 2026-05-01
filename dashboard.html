@@ -79,17 +79,16 @@
         </div>
       </div>
       <nav class="nav">
-             <a href="dashboard.html" class="active"><span class="ico">🧩</span>Dashboard</a>
-      <a href="warehouse.html"><span class="ico">📦</span>Warehouse</a>
-      <a href="products.html"><span class="ico">🧴</span>Products</a>
-      <a  href="agents.html"><span class="ico">🧑🏾‍💼</span>Agents</a>
-      <a href="distribute.html"><span class="ico">🚚</span>Distribute Stock</a>
-      <a href="sales.html"><span class="ico">🧾</span>All Sales</a>
-      <a href="payments.html"><span class="ico">💳</span>Payments</a>
-      <a href="stockbalance.html"><span class="ico">📊</span>Stock Balance</a>
-      <a href="analytics.html"><span class="ico">📈</span>Analytics</a>
-      <!-- <a href="settings.html"><span class="ico">⚙️</span>Settings</a> -->
-</nav>
+        <a href="dashboard.html" class="active"><span class="ico">🧩</span>Dashboard</a>
+        <a href="warehouse.html"><span class="ico">📦</span>Warehouse</a>
+        <a href="products.html"><span class="ico">🧴</span>Products</a>
+        <a href="agents.html"><span class="ico">🧑🏾‍💼</span>Agents</a>
+        <a href="distribute.html"><span class="ico">🚚</span>Distribute Stock</a>
+        <a href="sales.html"><span class="ico">🧾</span>All Sales</a>
+        <a href="payments.html"><span class="ico">💳</span>Payments</a>
+        <a href="stockbalance.html"><span class="ico">📊</span>Stock Balance</a>
+        <a href="analytics.html"><span class="ico">📈</span>Analytics</a>
+      </nav>
       <button class="logout-btn" id="logoutBtn">⎋ &nbsp;Logout</button>
     </aside>
 
@@ -131,12 +130,12 @@
         <div class="card">
           <h4>Total Agent Value</h4>
           <div class="value">GHS <span id="kpiAgent">0</span></div>
-          <p class="hint">Unit Agent Price × total quantity distributed</p>
+          <p class="hint">Unit Agent Price × total quantity distributed (net of returns)</p>
         </div>
         <div class="card">
           <h4>Total Selling Value</h4>
           <div class="value">GHS <span id="kpiSell">0</span></div>
-          <p class="hint">Unit Selling Price × total quantity sold</p>
+          <p class="hint">Actual revenue from sales</p>
         </div>
         <div class="card">
           <h4>Total Company Profit</h4>
@@ -199,7 +198,7 @@
             <div style="display:flex;gap:8px;align-items:center">
               <button class="linkBtn" id="tabBrand">Hair Brand</button>
               <button class="linkBtn" id="tabColor">Hair Color</button>
-              <button class="linkBtn">Export Dashboard</button>
+              <button class="linkBtn" id="exportBtn">Export Dashboard</button>
             </div>
           </div>
           <div class="panelBody">
@@ -222,34 +221,88 @@
 
   <script type="module">
     import { requireRole, logout } from './auth.js';
-    import { db } from './firebase-config.js';
     import { 
       collection, 
       getDocs,
       query,
       orderBy 
     } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { db } from './firebase-config.js';
 
-    // 🔒 Auth protection - redirects to index.html if not CEO
-    requireRole('ceo');
+    // 🔒 Auth protection
+    await requireRole('ceo');
 
     // State
     let allWarehouse = [];
     let allAgents = [];
     let allDistributions = [];
     let allSales = [];
-
-    // Active date range (default: last 7 days)
     let activeRange = { type: 'preset', days: 7 };
 
-    // Initialize
-    document.addEventListener('DOMContentLoaded', async () => {
-      await loadAllData();
-      applyFiltersAndRender();
-      setupEventListeners();
-    });
+    // Helper: Extract items from distribution (handles both old and new structure)
+    function getDistributionItems(dist) {
+      if (dist.items && Array.isArray(dist.items) && dist.items.length > 0) {
+        return dist.items;
+      }
+      // Old flat structure
+      return [{
+        hairBrand: dist.hairBrand,
+        color: dist.color,
+        length: dist.length,
+        quantity: dist.quantity || 0,
+        unitAgentPrice: dist.unitAgentPrice || 0,
+        returnedQuantity: dist.returnedQuantity || 0
+      }];
+    }
 
-    // ── Date helpers ──────────────────────────────────────────────
+    // Helper: Calculate net distributed quantity (accounting for returns)
+    function getNetDistributedQuantity(dist) {
+      const items = getDistributionItems(dist);
+      return items.reduce((sum, item) => {
+        const returned = item.returnedQuantity || 0;
+        return sum + Math.max(0, (item.quantity || 0) - returned);
+      }, 0);
+    }
+
+    // Helper: Calculate total agent value from distribution
+    function getTotalAgentValue(dist) {
+      const items = getDistributionItems(dist);
+      return items.reduce((sum, item) => {
+        const returned = item.returnedQuantity || 0;
+        const netQty = Math.max(0, (item.quantity || 0) - returned);
+        return sum + (netQty * (item.unitAgentPrice || 0));
+      }, 0);
+    }
+
+    // Helper: Get net agent value by brand from distribution
+    function getAgentValueByBrand(dist) {
+      const items = getDistributionItems(dist);
+      const result = {};
+      items.forEach(item => {
+        const brand = item.hairBrand || 'Unknown';
+        const returned = item.returnedQuantity || 0;
+        const netQty = Math.max(0, (item.quantity || 0) - returned);
+        const value = netQty * (item.unitAgentPrice || 0);
+        result[brand] = (result[brand] || 0) + value;
+      });
+      return result;
+    }
+
+    // Helper: Get net agent value by color from distribution
+    function getAgentValueByColor(dist) {
+      const items = getDistributionItems(dist);
+      const result = {};
+      items.forEach(item => {
+        const color = item.color || 'Unknown';
+        const returned = item.returnedQuantity || 0;
+        const netQty = Math.max(0, (item.quantity || 0) - returned);
+        const value = netQty * (item.unitAgentPrice || 0);
+        result[color] = (result[color] || 0) + value;
+      });
+      return result;
+    }
+
+    // Date helpers
     function getDateBounds(range) {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -284,9 +337,8 @@
           end = new Date(today.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
           break;
         case 'All Time':
-          return null; // no filter
+          return null;
         default:
-          // days-based (7, 30, 90)
           start = new Date(today);
           start.setDate(start.getDate() - (range.days || 7));
       }
@@ -295,91 +347,100 @@
     }
 
     function inRange(dateValue, bounds) {
-      if (!bounds) return true; // All Time
+      if (!bounds) return true;
       if (!dateValue) return false;
       const d = dateValue.toDate ? dateValue.toDate() : new Date(dateValue);
       return d >= bounds.start && d <= bounds.end;
     }
 
-    // ── Load all data from Firestore ──────────────────────────────
+    // Load data
     async function loadAllData() {
       try {
         const [warehouseSnap, agentsSnap, distSnap, salesSnap] = await Promise.all([
-          getDocs(query(collection(db, 'warehouse'), orderBy('dateAdded', 'desc'))),
-          getDocs(query(collection(db, 'agents'), orderBy('dateCreated', 'desc'))),
-          getDocs(query(collection(db, 'distributions'), orderBy('distributionDate', 'desc'))),
-          getDocs(query(collection(db, 'sales'), orderBy('saleDate', 'desc')))
+          getDocs(query(collection(db, 'warehouse'))),
+          getDocs(query(collection(db, 'agents'))),
+          getDocs(query(collection(db, 'distributions'))),
+          getDocs(query(collection(db, 'sales')))
         ]);
 
-        allWarehouse    = warehouseSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        allAgents       = agentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        allWarehouse = warehouseSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        allAgents = agentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         allDistributions = distSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        allSales        = salesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        allSales = salesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+        console.log(`Loaded: ${allWarehouse.length} warehouse, ${allAgents.length} agents, ${allDistributions.length} distributions, ${allSales.length} sales`);
       } catch (error) {
         console.error('Error loading data:', error);
       }
     }
 
-    // ── Apply active range filter and re-render everything ────────
+    // Apply filters and render
     function applyFiltersAndRender() {
       const bounds = getDateBounds(activeRange);
 
-      const filteredDists  = allDistributions.filter(d => inRange(d.distributionDate, bounds));
-      const filteredSales  = allSales.filter(s => inRange(s.saleDate, bounds));
-      const filteredWH     = allWarehouse.filter(w => inRange(w.dateAdded, bounds));
+      const filteredDists = allDistributions.filter(d => inRange(d.distributionDate, bounds));
+      const filteredSales = allSales.filter(s => inRange(s.saleDate, bounds));
+      const filteredWH = allWarehouse.filter(w => inRange(w.dateAdded, bounds));
 
       calculateAndDisplayKPIs(filteredWH, filteredDists, filteredSales);
       populateTopAgents(filteredDists, filteredSales);
-      populateTopProducts(filteredDists, filteredWH);
+      populateTopProducts(filteredDists);
     }
 
-    // ── KPIs ──────────────────────────────────────────────────────
+    // KPIs calculation
     function calculateAndDisplayKPIs(warehouse, distributions, sales) {
+      // Total Import Value
       const totalImportValue = warehouse.reduce((sum, item) => {
         const qty = item.importQuantity || item.availableQuantity || 0;
         return sum + (qty * (item.importPrice || 0));
       }, 0);
 
+      // Total Agent Value (from distributions, net of returns)
       const totalAgentValue = distributions.reduce((sum, dist) => {
-        if (dist.items && Array.isArray(dist.items)) {
-          return sum + dist.items.reduce((s, i) => s + ((i.agentPrice || 0) * (i.quantity || 0)), 0);
-        }
-        return sum + (dist.totalAgentPrice || 0);
+        return sum + getTotalAgentValue(dist);
       }, 0);
 
+      // Total Selling Value (from sales)
       const totalSellingValue = sales.reduce((sum, sale) => {
-        return sum + (sale.totalSale || (sale.sellingPrice * sale.quantity) || 0);
+        return sum + (sale.totalSale || sale.amount || 0);
       }, 0);
 
-      const totalCompanyProfit   = totalAgentValue - totalImportValue;
+      const totalCompanyProfit = totalAgentValue - totalImportValue;
       const totalAgentCommission = totalSellingValue - totalAgentValue;
 
-      const totalImported   = warehouse.reduce((sum, i) => sum + (i.importQuantity || i.availableQuantity || 0), 0);
-      const totalDistributed = warehouse.reduce((sum, i) => sum + (i.distributedQuantity || 0), 0);
+      // Distribution Rate
+      const totalImported = warehouse.reduce((sum, i) => sum + (i.importQuantity || i.availableQuantity || 0), 0);
+      const totalDistributed = distributions.reduce((sum, d) => sum + getNetDistributedQuantity(d), 0);
       const distributionRate = totalImported > 0 ? (totalDistributed / totalImported) * 100 : 0;
 
-      const activeAgents = allAgents.filter(a => a.isActive !== false).length;
+      // Active Agents (agents with any distribution or sale in period)
+      const activeAgentIds = new Set();
+      distributions.forEach(d => { if (d.agentId) activeAgentIds.add(d.agentId); });
+      sales.forEach(s => { if (s.agentId) activeAgentIds.add(s.agentId); });
+      const activeAgents = activeAgentIds.size;
 
+      // Top Brand by Agent Value
       const brandValues = {};
-      warehouse.forEach(item => {
-        const brand = item.hairBrand || 'Unknown';
-        const value = (item.distributedQuantity || 0) * (item.agentPrice || 0);
-        brandValues[brand] = (brandValues[brand] || 0) + value;
+      distributions.forEach(dist => {
+        const brandVals = getAgentValueByBrand(dist);
+        Object.entries(brandVals).forEach(([brand, value]) => {
+          brandValues[brand] = (brandValues[brand] || 0) + value;
+        });
       });
       const topBrand = Object.entries(brandValues).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
 
-      document.getElementById('kpiImport').textContent  = totalImportValue.toLocaleString();
-      document.getElementById('kpiAgent').textContent   = totalAgentValue.toLocaleString();
-      document.getElementById('kpiSell').textContent    = totalSellingValue.toLocaleString();
-      document.getElementById('kpiProfit').textContent  = totalCompanyProfit.toLocaleString();
-      document.getElementById('kpiComm').textContent    = totalAgentCommission.toLocaleString();
-      document.getElementById('kpiRate').textContent    = distributionRate.toFixed(1);
-      document.getElementById('kpiActive').textContent  = activeAgents;
+      // Update DOM
+      document.getElementById('kpiImport').textContent = totalImportValue.toLocaleString();
+      document.getElementById('kpiAgent').textContent = totalAgentValue.toLocaleString();
+      document.getElementById('kpiSell').textContent = totalSellingValue.toLocaleString();
+      document.getElementById('kpiProfit').textContent = totalCompanyProfit.toLocaleString();
+      document.getElementById('kpiComm').textContent = totalAgentCommission.toLocaleString();
+      document.getElementById('kpiRate').textContent = distributionRate.toFixed(1);
+      document.getElementById('kpiActive').textContent = activeAgents;
       document.getElementById('kpiTopBrand').textContent = topBrand;
     }
 
-    // ── Top Agents table ──────────────────────────────────────────
+    // Top Agents
     function populateTopAgents(distributions, sales) {
       const tbody = document.getElementById('agentsBody');
 
@@ -391,30 +452,31 @@
       const agentStats = allAgents.map(agent => {
         const agentDists = distributions.filter(d => d.agentId === agent.id);
         const agentSales = sales.filter(s => s.agentId === agent.id);
+        
+        const totalAgentValue = agentDists.reduce((sum, d) => sum + getTotalAgentValue(d), 0);
+        const totalSellingValue = agentSales.reduce((sum, s) => sum + (s.totalSale || s.amount || 0), 0);
+        const totalCommission = agentSales.reduce((sum, s) => sum + (s.agentCommission || 0), 0);
 
-        const totalAgentValue = agentDists.reduce((sum, d) => {
-          if (d.items && Array.isArray(d.items))
-            return sum + d.items.reduce((s, i) => s + ((i.agentPrice || 0) * (i.quantity || 0)), 0);
-          return sum + (d.totalAgentPrice || 0);
-        }, 0);
-
-        const totalSellingValue = agentSales.reduce((sum, s) => sum + (s.totalSale || 0), 0);
-        const totalCommission   = agentSales.reduce((sum, s) => sum + (s.agentCommission || 0), 0);
-
-        return { name: agent.fullName || agent.name || agent.nationalId, id: agent.id, totalAgentValue, totalSellingValue, totalCommission };
+        return { 
+          name: agent.fullName || agent.name || agent.nationalId || agent.id, 
+          id: agent.id, 
+          totalAgentValue, 
+          totalSellingValue, 
+          totalCommission 
+        };
       });
 
       agentStats.sort((a, b) => b.totalSellingValue - a.totalSellingValue);
       const top = agentStats.slice(0, 5);
 
-      if (top.every(a => a.totalSellingValue === 0)) {
+      if (top.every(a => a.totalSellingValue === 0 && a.totalAgentValue === 0)) {
         tbody.innerHTML = '<tr><td class="empty" colspan="4">No agent activity during this period.</td></tr>';
         return;
       }
 
       tbody.innerHTML = top.map(agent => `
         <tr>
-          <td><strong>${agent.name}</strong><br><small style="color:var(--muted)">${agent.id}</small></td>
+          <td><strong>${escapeHtml(agent.name)}</strong><br><small style="color:var(--muted)">${agent.id}</small></td>
           <td>GHS ${agent.totalAgentValue.toLocaleString()}</td>
           <td>GHS ${agent.totalSellingValue.toLocaleString()}</td>
           <td><strong style="color:var(--success)">GHS ${agent.totalCommission.toLocaleString()}</strong></td>
@@ -422,26 +484,33 @@
       `).join('');
     }
 
-    // ── Top Products table ────────────────────────────────────────
-    let productView = 'brand'; // 'brand' | 'color'
+    // Top Products
+    let productView = 'brand';
 
-    function populateTopProducts(distributions, warehouse) {
+    function populateTopProducts(distributions) {
       const tbody = document.getElementById('productsBody');
       document.getElementById('prodColLabel').textContent = productView === 'brand' ? 'Hair Brand' : 'Hair Color';
 
-      if (warehouse.length === 0) {
-        tbody.innerHTML = '<tr><td class="empty" colspan="2">No products found.</td></tr>';
+      if (distributions.length === 0) {
+        tbody.innerHTML = '<tr><td class="empty" colspan="2">No distributions during this period.</td></tr>';
         return;
       }
 
       const groups = {};
-      warehouse.forEach(item => {
-        const key = productView === 'brand' ? (item.hairBrand || 'Unknown') : (item.color || 'Unknown');
-        const value = (item.distributedQuantity || 0) * (item.agentPrice || 0);
-        groups[key] = (groups[key] || 0) + value;
+      
+      distributions.forEach(dist => {
+        const values = productView === 'brand' 
+          ? getAgentValueByBrand(dist)
+          : getAgentValueByColor(dist);
+        
+        Object.entries(values).forEach(([key, value]) => {
+          groups[key] = (groups[key] || 0) + value;
+        });
       });
 
-      const sorted = Object.entries(groups).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+      const sorted = Object.entries(groups)
+        .map(([name, value]) => ({ name: name || 'Unknown', value }))
+        .sort((a, b) => b.value - a.value);
 
       if (sorted.length === 0 || sorted.every(p => p.value === 0)) {
         tbody.innerHTML = '<tr><td class="empty" colspan="2">No distributions during this period.</td></tr>';
@@ -450,13 +519,23 @@
 
       tbody.innerHTML = sorted.slice(0, 5).map(p => `
         <tr>
-          <td><strong>${p.name}</strong></td>
+          <td><strong>${escapeHtml(p.name)}</strong></td>
           <td>GHS ${p.value.toLocaleString()}</td>
         </tr>
       `).join('');
     }
 
-    // ── Event listeners ───────────────────────────────────────────
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+    }
+
+    // Event Listeners
     function setupEventListeners() {
       // Range chips
       document.querySelectorAll('#chips .chip').forEach(btn => {
@@ -479,8 +558,11 @@
       // Custom date filter
       document.getElementById('customFilterBtn').addEventListener('click', () => {
         const start = document.getElementById('customStart').value;
-        const end   = document.getElementById('customEnd').value;
-        if (!start || !end) { alert('Please select both a start and end date.'); return; }
+        const end = document.getElementById('customEnd').value;
+        if (!start || !end) { 
+          alert('Please select both a start and end date.'); 
+          return; 
+        }
 
         document.querySelectorAll('#chips .chip').forEach(b => b.classList.remove('active'));
         document.getElementById('rangeLabel').textContent = `${start} → ${end}`;
@@ -488,33 +570,39 @@
         applyFiltersAndRender();
       });
 
-      // Agents panel range select
+      // Agent range select
       document.getElementById('agentRangeSelect').addEventListener('change', (e) => {
         const val = e.target.value;
-        const bounds = val === 'thisMonth'
-          ? getDateBounds({ type: 'preset', label: 'This Month' })
-          : getDateBounds({ type: 'preset', days: parseInt(val) });
-
+        let bounds;
+        if (val === 'thisMonth') {
+          bounds = getDateBounds({ type: 'preset', label: 'This Month' });
+        } else {
+          bounds = getDateBounds({ type: 'preset', days: parseInt(val) });
+        }
+        
         const filteredDists = allDistributions.filter(d => inRange(d.distributionDate, bounds));
         const filteredSales = allSales.filter(s => inRange(s.saleDate, bounds));
         populateTopAgents(filteredDists, filteredSales);
       });
 
-      // Brand / Color tabs
+      // Brand/Color tabs
       document.getElementById('tabBrand').addEventListener('click', () => {
         productView = 'brand';
         const bounds = getDateBounds(activeRange);
-        const filteredWH = allWarehouse.filter(w => inRange(w.dateAdded, bounds));
         const filteredDists = allDistributions.filter(d => inRange(d.distributionDate, bounds));
-        populateTopProducts(filteredDists, filteredWH);
+        populateTopProducts(filteredDists);
       });
 
       document.getElementById('tabColor').addEventListener('click', () => {
         productView = 'color';
         const bounds = getDateBounds(activeRange);
-        const filteredWH = allWarehouse.filter(w => inRange(w.dateAdded, bounds));
         const filteredDists = allDistributions.filter(d => inRange(d.distributionDate, bounds));
-        populateTopProducts(filteredDists, filteredWH);
+        populateTopProducts(filteredDists);
+      });
+
+      // Export
+      document.getElementById('exportBtn')?.addEventListener('click', () => {
+        alert('Export feature coming soon!');
       });
 
       // Logout
@@ -523,6 +611,15 @@
         window.location.href = 'index.html';
       });
     }
+
+    // Initialize
+    async function init() {
+      await loadAllData();
+      setupEventListeners();
+      applyFiltersAndRender();
+    }
+
+    init();
   </script>
 </body>
 </html>
