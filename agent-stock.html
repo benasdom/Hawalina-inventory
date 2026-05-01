@@ -20,7 +20,7 @@
     a{text-decoration:none;color:inherit}
     .app{display:flex;min-height:100vh}
 
-    /* ── Sidebar ── */
+    /* Sidebar */
     .sidebar{width:250px;padding:20px 16px;background:linear-gradient(180deg,#1a0a3c,#120730);color:#fff;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;flex-shrink:0}
     .brand{display:flex;gap:10px;align-items:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:12px}
     .brandIcon{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:18px;flex-shrink:0}
@@ -38,7 +38,7 @@
     .logoutBtn{width:100%;padding:9px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:transparent;color:rgba(255,255,255,.65);cursor:pointer;font-size:12px;display:flex;gap:8px;align-items:center;justify-content:center}
     .logoutBtn:hover{background:rgba(220,50,50,.2);color:#fff}
 
-    /* ── Main ── */
+    /* Main */
     .main{flex:1;padding:28px 28px 60px;min-width:0}
     @media(max-width:640px){.sidebar{display:none}.main{padding:16px 14px 40px}}
 
@@ -46,7 +46,7 @@
     .topBar h1{margin:0 0 4px;font-size:26px}
     .topBar p{margin:0;color:var(--muted);font-size:14px}
 
-    /* ── KPI bar ── */
+    /* KPIs */
     .kpis{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:13px;margin-bottom:20px}
     @media(max-width:1050px){.kpis{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:560px){.kpis{grid-template-columns:1fr}}
@@ -61,7 +61,7 @@
     .kpiVal{font-size:21px;font-weight:900;margin:0 0 3px;color:var(--text)}
     .kpiHint{font-size:12px;color:var(--muted);margin:0}
 
-    /* ── Stock grid ── */
+    /* Stock grid */
     .stockGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
     @media(max-width:500px){.stockGrid{grid-template-columns:1fr}}
 
@@ -216,7 +216,6 @@
       const allRes = await getAllAgents();
       if (!allRes.success) return;
 
-      // Retry up to 3 times with backoff — Firestore can be slow on first load
       let allAgentsData = allRes.data;
       let match = allAgentsData.find(a => a.firebaseUid === user.uid);
       if (!match) {
@@ -243,57 +242,97 @@
     });
   }
 
-  // ── Build inventory map from distributions minus sales ────────────────────
+  // Build inventory map from distributions minus sales
   async function loadStock(agentId) {
     const [distRes, salesRes] = await Promise.all([
       getDistributions(agentId),
       getSales(agentId)
     ]);
 
-    const distributions = distRes.success  ? distRes.data  : [];
-    const sales         = salesRes.success ? salesRes.data : [];
+    const distributions = distRes.success ? distRes.data : [];
+    const sales = salesRes.success ? salesRes.data : [];
 
-    const map = {};
+    const map = new Map(); // Use Map for better performance
 
-    distributions.forEach(d => {
-      const items = d.items && d.items.length
-        ? d.items
-        : [{ hairBrand: d.hairBrand, color: d.color, length: d.length, quantity: d.quantity, agentPrice: d.agentPrice || d.pricePerUnit, sellingPrice: d.sellingPrice }];
+    // Process distributions
+    distributions.forEach(dist => {
+      // Get items from distribution (handles both old and new structure)
+      let items = [];
+      
+      if (dist.items && Array.isArray(dist.items) && dist.items.length > 0) {
+        // New structure with items array
+        items = dist.items;
+      } else if (dist.hairBrand) {
+        // Old flat structure
+        items = [{
+          warehouseStockId: dist.warehouseStockId,
+          hairBrand: dist.hairBrand,
+          color: dist.color,
+          length: dist.length,
+          quantity: dist.quantity || 0,
+          unitAgentPrice: dist.unitAgentPrice || dist.pricePerUnit || 0,
+          unitPrice: dist.unitSellingPrice || dist.sellingPrice || 0
+        }];
+      }
 
       items.forEach(item => {
         const key = makeKey(item.hairBrand, item.color, item.length);
-        if (!map[key]) {
-          map[key] = {
-            hairBrand:    item.hairBrand    || d.hairBrand    || '?',
-            color:        item.color        || d.color        || '',
-            length:       item.length       || d.length       || '',
-            agentPrice:   item.agentPrice   || d.agentPrice   || d.pricePerUnit || 0,
-            sellingPrice: item.sellingPrice || d.sellingPrice || 0,
+        
+        if (!map.has(key)) {
+          map.set(key, {
+            hairBrand: item.hairBrand || 'Unknown',
+            color: item.color || '',
+            length: item.length || '',
+            agentPrice: item.unitAgentPrice || 0,
+            sellingPrice: item.unitPrice || 0,
             received: 0,
             sold: 0,
-          };
+            returned: 0
+          });
         }
-        map[key].received += (item.quantity || 0);
+        
+        const entry = map.get(key);
+        // Use returnedQuantity if available to calculate actual received
+        const returnedQty = item.returnedQuantity || 0;
+        const netReceived = (item.quantity || 0) - returnedQty;
+        entry.received += netReceived;
       });
     });
 
-    sales.forEach(s => {
-      const items = s.items && s.items.length
-        ? s.items
-        : [{ hairBrand: s.hairBrand || s.brand, color: s.color, length: s.length, quantity: s.quantity }];
+    // Process sales
+    sales.forEach(sale => {
+      let items = [];
+      
+      if (sale.items && Array.isArray(sale.items) && sale.items.length > 0) {
+        items = sale.items;
+      } else if (sale.hairBrand) {
+        items = [{
+          hairBrand: sale.hairBrand,
+          color: sale.color,
+          length: sale.length,
+          quantity: sale.quantity || 0
+        }];
+      }
 
       items.forEach(item => {
         const key = makeKey(item.hairBrand, item.color, item.length);
-        if (map[key]) {
-          map[key].sold += (item.quantity || 0);
+        
+        if (map.has(key)) {
+          const entry = map.get(key);
+          entry.sold += (item.quantity || 0);
+          map.set(key, entry);
         } else {
-          map[key] = {
-            hairBrand: item.hairBrand || s.hairBrand || s.brand || '?',
-            color: item.color || s.color || '',
-            length: item.length || s.length || '',
-            agentPrice: 0, sellingPrice: 0,
-            received: 0, sold: item.quantity || 0
-          };
+          // This should rarely happen, but handle gracefully
+          map.set(key, {
+            hairBrand: item.hairBrand || 'Unknown',
+            color: item.color || '',
+            length: item.length || '',
+            agentPrice: 0,
+            sellingPrice: 0,
+            received: 0,
+            sold: item.quantity || 0,
+            returned: 0
+          });
         }
       });
     });
@@ -303,28 +342,31 @@
   }
 
   function renderKPIs(map) {
-    const entries    = Object.values(map);
-    const totalSold  = entries.reduce((s, v) => s + v.sold, 0);
-    const totalRec   = entries.reduce((s, v) => s + v.received, 0);
+    const entries = Array.from(map.values());
+    const totalSold = entries.reduce((s, v) => s + v.sold, 0);
+    const totalRec = entries.reduce((s, v) => s + v.received, 0);
     const totalAvail = entries.reduce((s, v) => s + Math.max(0, v.received - v.sold), 0);
-    const totalVal   = entries.reduce((s, v) => s + Math.max(0, v.received - v.sold) * (v.agentPrice || 0), 0);
-    const types      = entries.length;
-    const lowCount   = entries.filter(v => { const a = Math.max(0, v.received - v.sold); return a > 0 && a <= 3; }).length;
-    const sellRate   = totalRec > 0 ? ((totalSold / totalRec) * 100).toFixed(0) : 0;
+    const totalVal = entries.reduce((s, v) => s + Math.max(0, v.received - v.sold) * (v.agentPrice || 0), 0);
+    const types = entries.length;
+    const lowCount = entries.filter(v => { 
+      const a = Math.max(0, v.received - v.sold); 
+      return a > 0 && a <= 3; 
+    }).length;
+    const sellRate = totalRec > 0 ? ((totalSold / totalRec) * 100).toFixed(0) : 0;
 
-    document.getElementById('kpiUnits').textContent    = totalAvail.toLocaleString();
-    document.getElementById('kpiValue').textContent    = 'GHS ' + fmt(totalVal);
-    document.getElementById('kpiSold').textContent     = totalSold.toLocaleString();
+    document.getElementById('kpiUnits').textContent = totalAvail.toLocaleString();
+    document.getElementById('kpiValue').textContent = 'GHS ' + fmt(totalVal);
+    document.getElementById('kpiSold').textContent = totalSold.toLocaleString();
     document.getElementById('kpiSoldRate').textContent = `${sellRate}% sell-through rate`;
-    document.getElementById('kpiTypes').textContent    = types;
-    document.getElementById('kpiLow').textContent      = lowCount > 0
+    document.getElementById('kpiTypes').textContent = types;
+    document.getElementById('kpiLow').innerHTML = lowCount > 0
       ? `⚠️ ${lowCount} product${lowCount !== 1 ? 's' : ''} running low`
       : '✅ All stocked';
   }
 
   function renderCards(map) {
-    const grid    = document.getElementById('stockGrid');
-    const entries = Object.values(map);
+    const grid = document.getElementById('stockGrid');
+    const entries = Array.from(map.values());
 
     if (!entries.length) {
       grid.innerHTML = '<p class="empty">No stock has been assigned to you yet.<br>Contact your admin to distribute stock.</p>';
@@ -332,25 +374,34 @@
     }
 
     // Sort: most available first, out-of-stock last
-    entries.sort((a, b) => Math.max(0, b.received - b.sold) - Math.max(0, a.received - a.sold));
+    entries.sort((a, b) => {
+      const availA = Math.max(0, a.received - a.sold);
+      const availB = Math.max(0, b.received - b.sold);
+      return availB - availA;
+    });
 
     grid.innerHTML = entries.map(item => {
-      const avail      = Math.max(0, item.received - item.sold);
-      const pct        = item.received > 0 ? Math.round((avail / item.received) * 100) : 0;
-      const isOut      = avail === 0;
-      const isLow      = !isOut && avail <= 3;
-      const cardCls    = isOut ? 'out' : isLow ? 'low' : '';
-      const badgeCls   = isOut ? 'out' : isLow ? 'low' : 'ok';
-      const badgeTxt   = isOut ? 'Out of Stock' : isLow ? 'Low Stock' : 'In Stock';
-      const barCls     = pct <= 20 ? 'danger' : pct <= 50 ? 'warn' : '';
-      const name       = [item.hairBrand, item.color, item.length ? `${item.length}"` : ''].filter(Boolean).join(' ');
+      const avail = Math.max(0, item.received - item.sold);
+      const pct = item.received > 0 ? Math.round((avail / item.received) * 100) : 0;
+      const isOut = avail === 0;
+      const isLow = !isOut && avail <= 3;
+      const cardCls = isOut ? 'out' : isLow ? 'low' : '';
+      const badgeCls = isOut ? 'out' : isLow ? 'low' : 'ok';
+      const badgeTxt = isOut ? 'Out of Stock' : isLow ? 'Low Stock' : 'In Stock';
+      const barCls = pct <= 20 ? 'danger' : pct <= 50 ? 'warn' : '';
+      
+      const nameParts = [item.hairBrand];
+      if (item.color && item.color !== 'Not Specified') nameParts.push(item.color);
+      if (item.length) nameParts.push(`${item.length}"`);
+      const name = nameParts.join(' · ');
+      
       const stockValue = avail * (item.agentPrice || 0);
 
       return `<div class="stockCard ${cardCls}">
         <div class="stockCardHead">
           <div>
             <p class="stockProductName">${esc(name)}</p>
-            <p class="stockProductSub">${esc(item.hairBrand || '—')}${item.color ? ' · ' + esc(item.color) : ''}</p>
+            <p class="stockProductSub">${esc(item.hairBrand || '—')}</p>
           </div>
           <span class="stockBadge ${badgeCls}">${badgeTxt}</span>
         </div>
@@ -385,12 +436,12 @@
           </div>
 
           <div class="priceRow">
-            ${item.agentPrice   ? `<span class="pricePill">Cost: GHS ${fmt(item.agentPrice)}</span>`   : ''}
-            ${item.sellingPrice ? `<span class="pricePill green">Sell: GHS ${fmt(item.sellingPrice)}</span>` : ''}
-            ${stockValue > 0    ? `<span class="pricePill">Value: GHS ${fmt(stockValue)}</span>`       : ''}
+            ${item.agentPrice > 0 ? `<span class="pricePill">Cost: GHS ${fmt(item.agentPrice)}</span>` : ''}
+            ${item.sellingPrice > 0 ? `<span class="pricePill green">Sell: GHS ${fmt(item.sellingPrice)}</span>` : ''}
+            ${stockValue > 0 ? `<span class="pricePill">Value: GHS ${fmt(stockValue)}</span>` : ''}
           </div>
 
-          ${avail > 0 ? `<button class="actionBtn" onclick="location.href='agent-record-sale.html'">💰 Record a Sale</button>` : ''}
+          ${avail > 0 ? `<button class="actionBtn" onclick="window.location.href='agent-record-sale.html'">💰 Record a Sale</button>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -399,11 +450,13 @@
   function makeKey(brand, color, length) {
     return `${brand || '?'}|${color || ''}|${length || '?'}`;
   }
+  
   function fmt(n) {
     return Number(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
+  
   function esc(str) {
-    return String(str ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    return String(str ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
   }
 
   init();
