@@ -17,8 +17,7 @@ import {
   Timestamp,
   serverTimestamp,
   runTransaction
-} from 'firebase/firestore';
-
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // =======================
 // RETURN STOCK (PRODUCTION READY - SINGLE VERSION)
