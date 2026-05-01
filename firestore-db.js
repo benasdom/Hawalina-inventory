@@ -376,21 +376,64 @@ export async function addDistribution(distributionData) {
 // ============================================
 // SALES COLLECTION
 // ============================================
-
 export async function addSale(saleData) {
   try {
+    // Calculate commission if not provided
+    let agentCommission = saleData.agentCommission;
+    let totalAmount = saleData.totalAmount || saleData.totalSellingPrice || 0;
+    
+    // Handle multi-item sales
+    let items = saleData.items;
+    if (items && Array.isArray(items) && items.length > 0) {
+      // Calculate totals from items if not provided
+      if (!totalAmount) {
+        totalAmount = items.reduce((sum, item) => {
+          return sum + ((item.sellingPrice || 0) * (item.quantity || 0));
+        }, 0);
+      }
+      
+      // Calculate commission from items if not provided
+      if (!agentCommission) {
+        agentCommission = items.reduce((sum, item) => {
+          const itemCommission = ((item.sellingPrice || 0) - (item.unitAgentPrice || 0)) * (item.quantity || 0);
+          return sum + itemCommission;
+        }, 0);
+      }
+    } 
+    // Handle single item sale (old structure)
+    else if (!agentCommission && saleData.sellingPrice && saleData.agentPrice) {
+      agentCommission = (saleData.sellingPrice - saleData.agentPrice) * (saleData.quantity || 1);
+      totalAmount = (saleData.sellingPrice || 0) * (saleData.quantity || 1);
+    }
+    
+    // Ensure we have valid numbers
+    agentCommission = agentCommission || 0;
+    totalAmount = totalAmount || 0;
+    
     const docRef = await addDoc(collection(db, 'sales'), {
       ...saleData,
-      saleDate:      saleData.saleDate || serverTimestamp(),
-      paymentStatus: saleData.paymentStatus || 'pending'
+      items: items || null,
+      quantity: saleData.quantity || 1,
+      sellingPrice: saleData.sellingPrice || 0,
+      agentPrice: saleData.agentPrice || 0,
+      agentCommission: agentCommission,
+      totalAmount: totalAmount,
+      totalSellingPrice: saleData.totalSellingPrice || totalAmount,
+      saleDate: saleData.saleDate || serverTimestamp(),
+      paymentStatus: saleData.paymentStatus || 'completed',
+      createdAt: serverTimestamp()
     });
 
-    if (saleData.agentId && saleData.agentCommission) {
+    // Update agent's totalCommission
+    if (saleData.agentId && agentCommission > 0) {
       const agentRef = doc(db, 'agents', saleData.agentId);
       const agentDoc = await getDoc(agentRef);
       if (agentDoc.exists()) {
         const currentCommission = agentDoc.data().totalCommission || 0;
-        await updateDoc(agentRef, { totalCommission: currentCommission + saleData.agentCommission });
+        await updateDoc(agentRef, { 
+          totalCommission: currentCommission + agentCommission,
+          lastUpdated: serverTimestamp()
+        });
       }
     }
 
@@ -412,22 +455,21 @@ export async function getSales(agentId = null) {
     const querySnapshot = await getDocs(q);
     const sales = [];
     querySnapshot.forEach((doc) => {
-      sales.push({ id: doc.id, ...doc.data() });
-    });
-    if (agentId) {
-      sales.sort((a, b) => {
-        const da = a.saleDate?.toDate ? a.saleDate.toDate() : new Date(a.saleDate || 0);
-        const db2 = b.saleDate?.toDate ? b.saleDate.toDate() : new Date(b.saleDate || 0);
-        return db2 - da;
+      const data = doc.data();
+      sales.push({ 
+        id: doc.id, 
+        ...data,
+        // Ensure commission fields exist with defaults
+        agentCommission: data.agentCommission || data.totalCommission || 0,
+        totalCommission: data.totalCommission || data.agentCommission || 0
       });
-    }
+    });
     return { success: true, data: sales };
   } catch (error) {
     console.error('Error getting sales:', error);
     return { success: false, error: error.message };
   }
 }
-
 export async function updateSale(saleId, saleData) {
   try {
     const docRef = doc(db, 'sales', saleId);
