@@ -106,6 +106,8 @@
     .actions{display:flex;justify-content:flex-end;gap:10px;padding:14px 18px 18px}
     .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
+    .success-message{position:fixed;bottom:20px;right:20px;background:var(--success);color:#fff;padding:12px 20px;border-radius:12px;z-index:1000;animation:slideIn 0.3s ease-out}
+    @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
   </style>
 </head>
 <body>
@@ -208,7 +210,7 @@
   </main>
 </div>
 
-<!-- ── Add Distribution Modal ── -->
+<!-- Add Distribution Modal -->
 <div class="modal" id="modal">
   <div class="box" role="dialog" aria-modal="true">
     <div class="boxHead">
@@ -290,7 +292,7 @@
   </div>
 </div>
 
-<!-- ── Return Stock Modal ── -->
+<!-- Return Stock Modal -->
 <div class="modal" id="returnModal">
   <div class="box narrow" role="dialog" aria-modal="true">
     <div class="boxHead warn-head">
@@ -321,7 +323,6 @@
         </div>
       </div>
 
-      <!-- Live info panel — shown after dist is selected -->
       <div id="r_infoPanel" style="display:none;margin-top:16px">
         <p class="sectionTitle">Return Summary</p>
         <div class="infoRow">
@@ -376,7 +377,6 @@
   let distributions = [], agents = [], warehouseStock = [], products = [];
   let selectedWarehouseItem = null, sellingPrice = 0;
 
-  // ── Auth guard ────────────────────────────────────────────────
   async function init() {
     const allowed = await requireRole('ceo');
     if (!allowed) return;
@@ -388,35 +388,41 @@
     const [distRes, agentRes, whRes, prodRes] = await Promise.all([
       getDistributions(), getAllAgents(), getWarehouseStock(), getAllProducts()
     ]);
-    distributions  = distRes.success  ? distRes.data  : [];
-    agents         = agentRes.success ? agentRes.data.filter(a => a.isActive !== false) : [];
-    warehouseStock = whRes.success    ? whRes.data    : [];
-    products       = prodRes.success  ? prodRes.data  : [];
+    distributions = distRes.success ? distRes.data : [];
+    agents = agentRes.success ? agentRes.data.filter(a => a.isActive !== false) : [];
+    warehouseStock = whRes.success ? whRes.data : [];
+    products = prodRes.success ? prodRes.data : [];
     renderTable(distributions);
     updateKPIs(distributions);
   }
 
-  // ── KPIs ──────────────────────────────────────────────────────
+  function showSuccess(message) {
+    const div = document.createElement('div');
+    div.className = 'success-message';
+    div.textContent = message;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 3000);
+  }
+
   function updateKPIs(dists) {
     let ta = 0, ts = 0, units = 0;
     dists.forEach(d => {
-      const returned  = d.returnedQuantity  || 0;
-      const netQty    = Math.max(0, (d.quantity || 0) - returned);
-      const unitAgent = d.unitAgentPrice    || 0;
-      const unitSell  = d.unitSellingPrice  || 0;
-      ta    += netQty * unitAgent;
-      ts    += netQty * unitSell;
+      const returned = d.returnedQuantity || 0;
+      const netQty = Math.max(0, (d.quantity || 0) - returned);
+      const unitAgent = d.unitAgentPrice || 0;
+      const unitSell = d.unitSellingPrice || 0;
+      ta += netQty * unitAgent;
+      ts += netQty * unitSell;
       units += netQty;
     });
     document.getElementById('kpiAgent').textContent = fmt(ta);
-    document.getElementById('kpiSell').textContent  = fmt(ts);
-    document.getElementById('kpiComm').textContent  = fmt(ts - ta);
-    document.getElementById('kpiDist').textContent  = units;
+    document.getElementById('kpiSell').textContent = fmt(ts);
+    document.getElementById('kpiComm').textContent = fmt(ts - ta);
+    document.getElementById('kpiDist').textContent = units;
   }
 
-  // ── Render table ──────────────────────────────────────────────
   function renderTable(dists) {
-    const q        = document.getElementById('search').value.trim().toLowerCase();
+    const q = document.getElementById('search').value.trim().toLowerCase();
     const filtered = dists.filter(d =>
       `${d.agentName||''} ${d.hairBrand||''} ${d.color||''} ${d.length||''}`.toLowerCase().includes(q)
     );
@@ -427,8 +433,8 @@
       return;
     }
     tbody.innerHTML = filtered.map(d => {
-      const tSell  = d.totalSellingPrice || 0;
-      const tAgent = d.totalAgentPrice   || 0;
+      const tSell = d.totalSellingPrice || 0;
+      const tAgent = d.totalAgentPrice || 0;
       return `<tr>
         <td>${esc(toDateStr(d.distributionDate))}</td>
         <td>${esc(d.agentName||'—')}</td>
@@ -442,13 +448,10 @@
         <td>GHS ${fmt(tSell - tAgent)}</td>
       </tr>`;
     }).join('');
-    document.getElementById('countLabel').textContent =
-      `${filtered.length} record${filtered.length!==1?'s':''}`;
+    document.getElementById('countLabel').textContent = `${filtered.length} record${filtered.length!==1?'s':''}`;
   }
 
-  // ══════════════════════════════════════════
   // ADD DISTRIBUTION MODAL
-  // ══════════════════════════════════════════
   const modal = document.getElementById('modal');
 
   async function openModal() {
@@ -488,9 +491,9 @@
   // Cascading dropdowns
   document.getElementById('f_brand').addEventListener('change', async function() {
     const brand = this.value;
-    const cSel  = document.getElementById('f_color');
-    const lSel  = document.getElementById('f_length');
-    const wSel  = document.getElementById('f_warehouseItem');
+    const cSel = document.getElementById('f_color');
+    const lSel = document.getElementById('f_length');
+    const wSel = document.getElementById('f_warehouseItem');
     cSel.innerHTML = '<option value="">Select Color</option>';
     lSel.innerHTML = '<option value="">Select color first</option>';
     wSel.innerHTML = '<option value="">Select length first</option>';
@@ -507,8 +510,8 @@
   document.getElementById('f_color').addEventListener('change', async function() {
     const brand = document.getElementById('f_brand').value;
     const color = this.value;
-    const lSel  = document.getElementById('f_length');
-    const wSel  = document.getElementById('f_warehouseItem');
+    const lSel = document.getElementById('f_length');
+    const wSel = document.getElementById('f_warehouseItem');
     lSel.innerHTML = '<option value="">Select Length</option>';
     wSel.innerHTML = '<option value="">Select length first</option>';
     lSel.disabled = !color; wSel.disabled = true;
@@ -522,12 +525,12 @@
   });
 
   document.getElementById('f_length').addEventListener('change', function() {
-    const brand  = document.getElementById('f_brand').value;
-    const color  = document.getElementById('f_color').value;
+    const brand = document.getElementById('f_brand').value;
+    const color = document.getElementById('f_color').value;
     const length = this.value;
-    const wSel   = document.getElementById('f_warehouseItem');
+    const wSel = document.getElementById('f_warehouseItem');
     wSel.innerHTML = '<option value="">Select batch</option>';
-    wSel.disabled  = !length;
+    wSel.disabled = !length;
     selectedWarehouseItem = null; sellingPrice = 0;
     document.getElementById('f_unitSell').textContent = '—';
     document.getElementById('availableHint').textContent = '';
@@ -570,33 +573,33 @@
   );
 
   function updateSummary() {
-    const qty = parseFloat(document.getElementById('f_qty').value)       || 0;
-    const ua  = parseFloat(document.getElementById('f_unitAgent').value) || 0;
-    const tA  = qty * ua;
-    const tS  = qty * sellingPrice;
+    const qty = parseFloat(document.getElementById('f_qty').value) || 0;
+    const ua = parseFloat(document.getElementById('f_unitAgent').value) || 0;
+    const tA = qty * ua;
+    const tS = qty * sellingPrice;
     document.getElementById('sumAgent').textContent = fmt(tA);
-    document.getElementById('sumSell').textContent  = fmt(tS);
-    document.getElementById('sumComm').textContent  = fmt(tS - tA);
+    document.getElementById('sumSell').textContent = fmt(tS);
+    document.getElementById('sumComm').textContent = fmt(tS - tA);
   }
 
   document.getElementById('addBtn').addEventListener('click', async () => {
     document.getElementById('formError').style.display = 'none';
 
-    const agSel     = document.getElementById('f_agent');
-    const agentId   = agSel.value;
+    const agSel = document.getElementById('f_agent');
+    const agentId = agSel.value;
     const agentName = agSel.options[agSel.selectedIndex]?.dataset?.name || '';
-    const brand     = document.getElementById('f_brand').value;
-    const color     = document.getElementById('f_color').value;
-    const length    = document.getElementById('f_length').value;
-    const date      = document.getElementById('f_date').value;
-    const qty       = parseInt(document.getElementById('f_qty').value);
+    const brand = document.getElementById('f_brand').value;
+    const color = document.getElementById('f_color').value;
+    const length = document.getElementById('f_length').value;
+    const date = document.getElementById('f_date').value;
+    const qty = parseInt(document.getElementById('f_qty').value);
     const unitAgent = parseFloat(document.getElementById('f_unitAgent').value);
-    const notes     = document.getElementById('f_notes').value.trim();
+    const notes = document.getElementById('f_notes').value.trim();
 
-    if (!agentId)               return showErr('formError', 'Please select an agent.');
+    if (!agentId) return showErr('formError', 'Please select an agent.');
     if (!brand||!color||!length) return showErr('formError', 'Please select brand, color and length.');
-    if (!selectedWarehouseItem)  return showErr('formError', 'Please select a warehouse stock batch.');
-    if (!qty || qty < 1)         return showErr('formError', 'Quantity must be at least 1.');
+    if (!selectedWarehouseItem) return showErr('formError', 'Please select a warehouse stock batch.');
+    if (!qty || qty < 1) return showErr('formError', 'Quantity must be at least 1.');
     if (qty > selectedWarehouseItem.availableQuantity)
       return showErr('formError', `Only ${selectedWarehouseItem.availableQuantity} units available in this batch.`);
     if (!unitAgent || unitAgent < 0) return showErr('formError', 'Please enter a valid unit agent price.');
@@ -605,18 +608,18 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Saving...';
 
-    const totalAgentPrice   = qty * unitAgent;
+    const totalAgentPrice = qty * unitAgent;
     const totalSellingPrice = qty * sellingPrice;
 
     const result = await addDistribution({
       agentId, agentName, hairBrand: brand, color,
-      length:           Number(length),
-      quantity:         qty,
-      unitAgentPrice:   unitAgent,
+      length: Number(length),
+      quantity: qty,
+      unitAgentPrice: unitAgent,
       unitSellingPrice: sellingPrice,
       totalAgentPrice,
       totalSellingPrice,
-      agentCommission:  totalSellingPrice - totalAgentPrice,
+      agentCommission: totalSellingPrice - totalAgentPrice,
       warehouseStockId: selectedWarehouseItem.id,
       notes,
       distributionDate: date,
@@ -633,34 +636,39 @@
     if (result.success) {
       closeModal();
       await loadPage();
+      showSuccess('Distribution added successfully!');
     } else {
       showErr('formError', 'Error saving: ' + result.error);
     }
   });
 
-  // ══════════════════════════════════════════
-  // RETURN STOCK MODAL
-  // ══════════════════════════════════════════
+  // RETURN STOCK MODAL - FIXED VERSION
   const returnModal = document.getElementById('returnModal');
-  let selectedDistribution = null; // the chosen distribution record
+  let selectedDistribution = null;
 
   function openReturnModal() {
+    // Clear any existing listeners
+    const qtyInput = document.getElementById('r_qty');
+    if (qtyInput._listener) {
+      qtyInput.removeEventListener('input', qtyInput._listener);
+      delete qtyInput._listener;
+    }
+    
     document.getElementById('returnFormError').style.display = 'none';
     document.getElementById('r_dist').innerHTML = '<option value="">Select agent first</option>';
-    document.getElementById('r_dist').disabled  = true;
-    document.getElementById('r_qty').value      = '';
-    document.getElementById('r_qty').disabled   = true;
-    document.getElementById('r_distHint').textContent = '';
-    document.getElementById('r_qtyHint').textContent  = '';
+    document.getElementById('r_dist').disabled = true;
+    document.getElementById('r_qty').value = '';
+    document.getElementById('r_qty').disabled = true;
+    document.getElementById('r_distHint').innerHTML = '';
+    document.getElementById('r_qtyHint').innerHTML = '';
     document.getElementById('r_infoPanel').style.display = 'none';
     document.getElementById('confirmReturnBtn').disabled = true;
     selectedDistribution = null;
 
-    // Populate agents that have at least one distribution
     const agentSel = document.getElementById('r_agent');
     agentSel.innerHTML = '<option value="">Select Agent</option>';
     const agentsWithDist = agents.filter(a =>
-      distributions.some(d => d.agentId === a.id)
+      distributions.some(d => d.agentId === a.id && (d.maxReturnable || 0) > 0)
     );
     agentsWithDist.forEach(a =>
       agentSel.innerHTML += `<option value="${a.id}">${esc(a.fullName||a.name||'Unknown')}</option>`
@@ -670,43 +678,64 @@
     returnModal.classList.add('open');
   }
 
-  const closeReturnModal = () => returnModal.classList.remove('open');
+  const closeReturnModal = () => {
+    // Clean up listener when closing
+    const qtyInput = document.getElementById('r_qty');
+    if (qtyInput._listener) {
+      qtyInput.removeEventListener('input', qtyInput._listener);
+      delete qtyInput._listener;
+    }
+    returnModal.classList.remove('open');
+  };
 
-  // When agent is selected → populate their distributions
+  // Agent selection handler
   document.getElementById('r_agent').addEventListener('change', function() {
     const agentId = this.value;
     const distSel = document.getElementById('r_dist');
     distSel.innerHTML = '<option value="">Select Distribution</option>';
-    document.getElementById('r_qty').value   = '';
+    document.getElementById('r_qty').value = '';
     document.getElementById('r_qty').disabled = true;
-    document.getElementById('r_distHint').textContent = '';
-    document.getElementById('r_qtyHint').textContent  = '';
+    document.getElementById('r_distHint').innerHTML = '';
+    document.getElementById('r_qtyHint').innerHTML = '';
     document.getElementById('r_infoPanel').style.display = 'none';
     document.getElementById('confirmReturnBtn').disabled = true;
     selectedDistribution = null;
 
-    if (!agentId) { distSel.disabled = true; return; }
+    if (!agentId) { 
+      distSel.disabled = true; 
+      return; 
+    }
 
-    const agentDists = distributions.filter(d => d.agentId === agentId);
+    const agentDists = distributions.filter(d => d.agentId === agentId && (d.maxReturnable || 0) > 0);
     if (!agentDists.length) {
-      distSel.innerHTML = '<option value="">No distributions found for this agent</option>';
-      distSel.disabled  = true;
+      distSel.innerHTML = '<option value="">No returnable distributions found</option>';
+      distSel.disabled = true;
       return;
     }
 
     agentDists.forEach(d => {
-      const label = `${toDateStr(d.distributionDate)} — ${d.hairBrand} ${d.color} ${d.length}" — ${d.quantity} units`;
-      distSel.innerHTML += `<option value="${d.id}">${esc(label)}</option>`;
+      const maxRet = d.maxReturnable || 0;
+      const label = `${toDateStr(d.distributionDate)} — ${d.hairBrand} ${d.color} ${d.length}" — ${maxRet} units returnable (of ${d.quantity})`;
+      distSel.innerHTML += `<option value="${d.id}" data-maxreturn="${maxRet}" data-totalqty="${d.quantity}" data-returned="${d.returnedQuantity || 0}">${esc(label)}</option>`;
     });
     distSel.disabled = false;
   });
 
-  // When distribution is selected → show info + enable qty input
+  // Distribution selection handler - FIXED with maxReturnable
   document.getElementById('r_dist').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
     const distId = this.value;
-    document.getElementById('r_qty').value   = '';
-    document.getElementById('r_qty').disabled = true;
-    document.getElementById('r_qtyHint').textContent  = '';
+    const qtyInput = document.getElementById('r_qty');
+    
+    // Clean up existing listener
+    if (qtyInput._listener) {
+      qtyInput.removeEventListener('input', qtyInput._listener);
+      delete qtyInput._listener;
+    }
+    
+    qtyInput.value = '';
+    qtyInput.disabled = true;
+    document.getElementById('r_qtyHint').innerHTML = '';
     document.getElementById('r_infoPanel').style.display = 'none';
     document.getElementById('confirmReturnBtn').disabled = true;
     selectedDistribution = null;
@@ -716,72 +745,97 @@
     const dist = distributions.find(d => d.id === distId);
     if (!dist) return;
 
-    // Determine the warehouseStockId — from items[] or flat field
-    const warehouseStockId = dist.warehouseStockId ||
-      (dist.items && dist.items[0]?.warehouseStockId) || null;
+    // Use pre-computed maxReturnable from backend
+    const maxReturnable = dist.maxReturnable || parseFloat(selectedOption?.dataset?.maxreturn) || 0;
+    const returnedSoFar = dist.returnedQuantity || parseFloat(selectedOption?.dataset?.returned) || 0;
+    const totalQuantity = dist.quantity || parseFloat(selectedOption?.dataset?.totalqty) || 0;
 
-    const wBatch = warehouseStockId
-      ? warehouseStock.find(w => w.id === warehouseStockId)
-      : null;
+    if (maxReturnable <= 0) {
+      document.getElementById('r_qtyHint').innerHTML = '<span style="color: var(--danger);">⚠️ All units have already been returned</span>';
+      return;
+    }
+
+    const warehouseStockId = dist.warehouseStockId || (dist.items && dist.items[0]?.warehouseStockId) || null;
+    const wBatch = warehouseStockId ? warehouseStock.find(w => w.id === warehouseStockId) : null;
 
     selectedDistribution = {
-      id:              dist.id,
-      agentId:         dist.agentId,
-      agentName:       dist.agentName,
-      hairBrand:       dist.hairBrand,
-      color:           dist.color,
-      length:          dist.length,
-      quantity:        dist.quantity || 0,
-      unitAgentPrice:  dist.unitAgentPrice || 0,
-      warehouseStockId,
-      importDate:      wBatch?.importDate || 'N/A',
+      id: dist.id,
+      agentId: dist.agentId,
+      agentName: dist.agentName,
+      hairBrand: dist.hairBrand,
+      color: dist.color,
+      length: dist.length,
+      quantity: totalQuantity,
+      unitAgentPrice: dist.unitAgentPrice || 0,
+      warehouseStockId: warehouseStockId,
+      maxReturnable: maxReturnable,
+      returnedSoFar: returnedSoFar
     };
 
-    // Populate info panel
-    document.getElementById('r_product').textContent  =
-      `${dist.hairBrand} ${dist.color} ${dist.length}"`;
-    document.getElementById('r_unitPrice').textContent =
-      `GHS ${fmt(dist.unitAgentPrice)}`;
-    document.getElementById('r_batch').textContent    =
-      wBatch ? `${wBatch.importDate||'N/A'} batch` : 'Batch not found';
+    // Update info panel
+    document.getElementById('r_product').innerHTML = `${esc(dist.hairBrand || 'Unknown')} ${esc(dist.color || 'Unknown')} ${dist.length || '0'}"`;
+    document.getElementById('r_unitPrice').textContent = `GHS ${fmt(dist.unitAgentPrice)}`;
+    document.getElementById('r_batch').textContent = wBatch ? `${wBatch.importDate || 'N/A'} batch` : 'Current stock';
+    document.getElementById('r_distHint').innerHTML = `
+      <strong>Original distribution:</strong> ${totalQuantity} units<br>
+      <strong>Already returned:</strong> ${returnedSoFar} units<br>
+      <strong>Available to return:</strong> <span style="color: var(--primary); font-weight: 900;">${maxReturnable} units</span>
+    `;
     document.getElementById('r_infoPanel').style.display = 'block';
 
-    document.getElementById('r_distHint').textContent =
-      `Original distribution: ${dist.quantity} units`;
-    document.getElementById('r_qtyHint').textContent  =
-      `Max returnable: ${dist.quantity} units`;
-
-    document.getElementById('r_qty').max      = dist.quantity;
-    document.getElementById('r_qty').disabled = false;
-    document.getElementById('r_qty').focus();
+    // Setup quantity input with proper validation
+    qtyInput.max = maxReturnable;
+    qtyInput.placeholder = `Enter quantity (max ${maxReturnable})`;
+    qtyInput.disabled = false;
+    
+    // Create and store listener for cleanup
+    qtyInput._listener = function() {
+      let value = parseInt(this.value, 10);
+      
+      if (isNaN(value)) {
+        document.getElementById('r_sumUnits').textContent = '0';
+        document.getElementById('r_sumRefund').textContent = '0.00';
+        document.getElementById('confirmReturnBtn').disabled = true;
+        return;
+      }
+      
+      if (value > maxReturnable) {
+        this.value = maxReturnable;
+        value = maxReturnable;
+      }
+      if (value < 0) {
+        this.value = 0;
+        value = 0;
+      }
+      
+      const refund = value * (selectedDistribution?.unitAgentPrice || 0);
+      document.getElementById('r_sumUnits').textContent = value;
+      document.getElementById('r_sumRefund').textContent = fmt(refund);
+      document.getElementById('confirmReturnBtn').disabled = value < 1;
+    };
+    
+    qtyInput.addEventListener('input', qtyInput._listener);
+    qtyInput.focus();
   });
 
-  // Live summary on qty change
-  document.getElementById('r_qty').addEventListener('input', function() {
-    const qty = parseInt(this.value) || 0;
-    document.getElementById('r_sumUnits').textContent  = qty;
-    document.getElementById('r_sumRefund').textContent =
-      fmt(qty * (selectedDistribution?.unitAgentPrice || 0));
-    document.getElementById('confirmReturnBtn').disabled =
-      !selectedDistribution || qty < 1 || qty > (selectedDistribution?.quantity || 0);
-  });
-
-  // Confirm return
+  // Confirm return button - FIXED
   document.getElementById('confirmReturnBtn').addEventListener('click', async () => {
-    const qty = parseInt(document.getElementById('r_qty').value) || 0;
+    const qty = parseInt(document.getElementById('r_qty').value, 10) || 0;
 
-    if (!selectedDistribution)     return showErr('returnFormError', 'No distribution selected.');
-    if (qty < 1)                   return showErr('returnFormError', 'Return quantity must be at least 1.');
-    if (qty > selectedDistribution.quantity)
-      return showErr('returnFormError', `Max returnable is ${selectedDistribution.quantity} units.`);
-    if (!selectedDistribution.warehouseStockId)
-      return showErr('returnFormError', 'Cannot find the original warehouse batch for this distribution. Please contact support.');
+    if (!selectedDistribution) {
+      return showErr('returnFormError', 'No distribution selected.');
+    }
+    if (qty < 1) {
+      return showErr('returnFormError', 'Return quantity must be at least 1.');
+    }
+    if (qty > selectedDistribution.maxReturnable) {
+      return showErr('returnFormError', `Max returnable is ${selectedDistribution.maxReturnable} units.`);
+    }
+    if (!selectedDistribution.warehouseStockId) {
+      return showErr('returnFormError', 'Cannot find the original warehouse batch. Please contact support.');
+    }
 
-    const confirmText =
-      `Return ${qty} unit(s) of ${selectedDistribution.hairBrand} ${selectedDistribution.color} ${selectedDistribution.length}" ` +
-      `from ${selectedDistribution.agentName}?\n\n` +
-      `• Warehouse stock restored: +${qty} units\n` +
-      `• Agent balance reduced: GHS ${fmt(qty * selectedDistribution.unitAgentPrice)}`;
+    const confirmText = `Return ${qty} unit(s) of ${selectedDistribution.hairBrand} ${selectedDistribution.color} ${selectedDistribution.length}" from ${selectedDistribution.agentName}?\n\n• Warehouse stock restored: +${qty} units\n• Agent balance reduced: GHS ${fmt(qty * selectedDistribution.unitAgentPrice)}`;
 
     if (!confirm(confirmText)) return;
 
@@ -790,15 +844,17 @@
     btn.innerHTML = '<span class="spinner"></span> Processing...';
 
     const result = await returnStock({
-      agentId:         selectedDistribution.agentId,
-      agentName:       selectedDistribution.agentName,
-      distributionId:  selectedDistribution.id,
+      agentId: selectedDistribution.agentId,
+      agentName: selectedDistribution.agentName,
+      distributionId: selectedDistribution.id,
       warehouseStockId: selectedDistribution.warehouseStockId,
-      hairBrand:       selectedDistribution.hairBrand,
-      color:           selectedDistribution.color,
-      length:          selectedDistribution.length,
-      returnQuantity:  qty,
-      unitAgentPrice:  selectedDistribution.unitAgentPrice,
+      hairBrand: selectedDistribution.hairBrand,
+      color: selectedDistribution.color,
+      length: selectedDistribution.length,
+      returnQuantity: qty,
+      unitAgentPrice: selectedDistribution.unitAgentPrice,
+      recordedBy: 'admin',
+      notes: ''
     });
 
     btn.disabled = false;
@@ -807,12 +863,12 @@
     if (result.success) {
       closeReturnModal();
       await loadPage();
+      showSuccess(`Successfully returned ${qty} unit(s)!`);
     } else {
       showErr('returnFormError', 'Error processing return: ' + result.error);
     }
   });
 
-  // ── Shared listeners ──────────────────────────────────────────
   function setupListeners() {
     document.getElementById('openModalBtn').addEventListener('click', openModal);
     document.getElementById('closeModalBtn').addEventListener('click', closeModal);
@@ -831,20 +887,26 @@
     });
   }
 
-  // ── Helpers ───────────────────────────────────────────────────
   function showErr(elId, msg) {
     const el = document.getElementById(elId);
-    el.textContent = msg; el.style.display = 'block';
+    el.textContent = msg;
+    el.style.display = 'block';
+    setTimeout(() => {
+      el.style.display = 'none';
+    }, 5000);
   }
+  
   function fmt(n) {
     return Number(n||0).toLocaleString('en-GH',{minimumFractionDigits:2,maximumFractionDigits:2});
   }
+  
   function esc(str) {
     return String(str??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
   }
+  
   function toDateStr(val) {
     if (!val) return '—';
-    if (val.toDate)  return val.toDate().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    if (val.toDate) return val.toDate().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
     if (val.seconds) return new Date(val.seconds*1000).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
     return new Date(val).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
   }

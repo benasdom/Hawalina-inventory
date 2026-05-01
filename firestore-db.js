@@ -580,9 +580,8 @@ export function calculateTotalSellingPrice(sellingPrice, quantity) {
 // ============================================
 // ✅ STOCK RETURNS (ONLY ONE CORRECT VERSION)
 // ============================================
-
 export async function returnStock(returnData) {
-  // Validation
+  // Validation with safe defaults
   if (!returnData?.distributionId) {
     return { success: false, error: 'Distribution ID is required' };
   }
@@ -622,21 +621,29 @@ export async function returnStock(returnData) {
           returnedQuantity: item.returnedQuantity || 0
         }));
       } else {
+        // ✅ Safe fallbacks for all fields
         items = [{
-          warehouseStockId: distribution.warehouseStockId || returnData.warehouseStockId,
-          hairBrand: distribution.hairBrand || returnData.hairBrand,
-          color: distribution.color || returnData.color,
-          length: distribution.length || returnData.length,
+          warehouseStockId: distribution.warehouseStockId || returnData.warehouseStockId || '',
+          hairBrand: distribution.hairBrand || returnData.hairBrand || 'Unknown',
+          color: distribution.color || returnData.color || 'Unknown',
+          length: distribution.length || returnData.length || '0',
           quantity: distribution.quantity || 0,
-          unitAgentPrice: distribution.unitAgentPrice || returnData.unitAgentPrice,
-          unitPrice: distribution.unitSellingPrice,
+          unitAgentPrice: distribution.unitAgentPrice || returnData.unitAgentPrice || 0,
+          unitPrice: distribution.unitSellingPrice || 0,
           returnedQuantity: distribution.returnedQuantity || 0,
-          importPrice: distribution.importPrice
+          importPrice: distribution.importPrice || 0
         }];
       }
 
-      // 3. Validate return quantity
-      const totalDistributed = items.reduce((sum, item) => sum + item.quantity, 0);
+      // Validate items have warehouseStockId
+      for (const item of items) {
+        if (!item.warehouseStockId) {
+          throw new Error(`Missing warehouseStockId for item: ${item.hairBrand}`);
+        }
+      }
+
+      // 3. Calculate totals
+      const totalDistributed = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
       const totalReturnedSoFar = items.reduce((sum, item) => sum + (item.returnedQuantity || 0), 0);
       const maxReturnable = totalDistributed - totalReturnedSoFar;
 
@@ -648,20 +655,9 @@ export async function returnStock(returnData) {
         throw new Error(`Cannot return more than ${maxReturnable} units (already returned: ${totalReturnedSoFar})`);
       }
 
-      // 4. READ ALL warehouse documents (collect unique warehouseStockIds)
-      const warehouseRefs = [];
-      const warehouseItemsMap = new Map(); // Store item info keyed by warehouseStockId
-      
-      for (const item of items) {
-        if (!warehouseRefs.find(ref => ref.id === item.warehouseStockId)) {
-          const warehouseRef = doc(db, 'warehouse', item.warehouseStockId);
-          warehouseRefs.push(warehouseRef);
-          warehouseItemsMap.set(item.warehouseStockId, {
-            item: item,
-            originalReturned: item.returnedQuantity || 0
-          });
-        }
-      }
+      // 4. READ ALL warehouse documents
+      const uniqueStockIds = [...new Set(items.map(item => item.warehouseStockId))];
+      const warehouseRefs = uniqueStockIds.map(id => doc(db, 'warehouse', id));
       
       // Execute all warehouse reads
       const warehouseSnaps = await Promise.all(
@@ -686,29 +682,25 @@ export async function returnStock(returnData) {
       }
       const agentData = agentSnap.data();
 
-      // ========== PHASE 2: PROCESS CALCULATIONS (NO MORE READS) ==========
+      // ========== PHASE 2: PROCESS CALCULATIONS ==========
       
       let remainingToReturn = returnQuantity;
       let totalRefundCents = 0;
       const transactionTimestamp = Timestamp.now();
       const updatedItems = [];
       const returnedBreakdown = [];
-      const warehouseUpdates = new Map(); // Store updates keyed by warehouseRef
+      const warehouseUpdates = new Map();
 
       for (let i = 0; i < items.length && remainingToReturn > 0; i++) {
         const originalItem = items[i];
         const alreadyReturned = originalItem.returnedQuantity || 0;
-        const available = originalItem.quantity - alreadyReturned;
+        const available = (originalItem.quantity || 0) - alreadyReturned;
         const returnQty = Math.min(remainingToReturn, available);
         
         let updatedItem = { ...originalItem };
 
         if (returnQty > 0) {
-          if (!originalItem.warehouseStockId) {
-            throw new Error(`Missing warehouseStockId for item: ${originalItem.hairBrand || 'Unknown'}`);
-          }
-
-          // Get warehouse data from our pre-fetched map
+          // Get warehouse data from pre-fetched map
           const warehouseData = warehouseDataMap.get(originalItem.warehouseStockId);
           if (!warehouseData) {
             throw new Error(`Warehouse data missing: ${originalItem.warehouseStockId}`);
@@ -726,7 +718,7 @@ export async function returnStock(returnData) {
           const newAvailable = currentAvailable + returnQty;
           const newDistributed = currentDistributed - returnQty;
 
-          // Store warehouse update for later
+          // Store warehouse update
           warehouseUpdates.set(originalItem.warehouseStockId, {
             availableQuantity: newAvailable,
             distributedQuantity: newDistributed,
@@ -746,14 +738,14 @@ export async function returnStock(returnData) {
           const itemRefundCents = returnQty * unitPriceCents;
           totalRefundCents += itemRefundCents;
 
-          // Track breakdown
+          // Track breakdown - ✅ ALL FIELDS HAVE SAFE DEFAULTS
           returnedBreakdown.push({
-            warehouseStockId: originalItem.warehouseStockId,
-            hairBrand: originalItem.hairBrand,
-            color: originalItem.color,
-            length: originalItem.length,
+            warehouseStockId: originalItem.warehouseStockId || '',
+            hairBrand: originalItem.hairBrand || 'Unknown',
+            color: originalItem.color || 'Unknown',
+            length: originalItem.length || '0',
             quantity: returnQty,
-            unitAgentPrice: originalItem.unitAgentPrice,
+            unitAgentPrice: originalItem.unitAgentPrice || 0,
             refundAmount: itemRefundCents / 100,
             refundAmountCents: itemRefundCents,
             returnedAt: transactionTimestamp
@@ -785,7 +777,7 @@ export async function returnStock(returnData) {
         transaction.update(warehouseRef, updateData);
       }
 
-      // 2. Update agent document
+      // 2. Update agent document - ✅ ALL FIELDS HAVE SAFE DEFAULTS
       transaction.update(agentRef, {
         totalOwed: newOwed,
         lastUpdated: serverTimestamp(),
@@ -807,12 +799,12 @@ export async function returnStock(returnData) {
         lastReturnAmount: totalRefund
       });
 
-      // 4. Create return record document
+      // 4. Create return record - ✅ ALL FIELDS HAVE SAFE DEFAULTS
       const returnRef = doc(collection(db, 'stockReturns'));
       transaction.set(returnRef, {
-        agentId: returnData.agentId,
+        agentId: returnData.agentId || '',
         agentName: returnData.agentName || agentData.name || '',
-        distributionId: returnData.distributionId,
+        distributionId: returnData.distributionId || '',
         returnQuantity: returnQuantity,
         totalRefund: totalRefund,
         totalRefundCents: totalRefundCents,
