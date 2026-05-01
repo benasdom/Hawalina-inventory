@@ -806,7 +806,7 @@
     document.getElementById('r_qty').focus();
   });
 
-  // Live summary on qty change — NEVER overwrites value mid-type, just enables/disables button
+  // Live summary on qty change — free typing, summary updates as you go
   document.getElementById('r_qty').addEventListener('input', function() {
     const qty       = parseInt(this.value, 10);
     const maxRet    = selectedDistribution?.maxReturnable || 0;
@@ -815,19 +815,6 @@
     document.getElementById('r_sumUnits').textContent  = valid ? qty : '0';
     document.getElementById('r_sumRefund').textContent = valid ? fmt(qty * unitPrice) : '0.00';
     document.getElementById('confirmReturnBtn').disabled = !selectedDistribution || !valid;
-  });
-
-  // Clamp value only on blur (when user leaves the field) — not while typing
-  document.getElementById('r_qty').addEventListener('blur', function() {
-    if (!selectedDistribution) return;
-    const maxRet    = selectedDistribution.maxReturnable || 0;
-    const unitPrice = selectedDistribution.unitAgentPrice || 0;
-    let qty = parseInt(this.value, 10);
-    if (isNaN(qty) || qty < 1) { this.value = ''; return; }
-    if (qty > maxRet) { this.value = maxRet; qty = maxRet; }
-    document.getElementById('r_sumUnits').textContent  = qty;
-    document.getElementById('r_sumRefund').textContent = fmt(qty * unitPrice);
-    document.getElementById('confirmReturnBtn').disabled = false;
   });
 
   // Confirm return
