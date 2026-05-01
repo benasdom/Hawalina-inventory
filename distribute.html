@@ -803,10 +803,12 @@
 
     document.getElementById('r_qty').max      = maxReturnable;
     document.getElementById('r_qty').disabled = false;
-    document.getElementById('r_qty').focus();
+    // Note: intentionally no .focus() here — calling focus() from inside a
+    // change event causes some browsers to fire a synthetic mouseup that
+    // re-triggers this same change handler, resetting selectedDistribution.
   });
 
-  // Live summary on qty change — free typing, summary updates as you go
+  // Update live summary as user types — button stays disabled unless qty is valid
   document.getElementById('r_qty').addEventListener('input', function() {
     const qty       = parseInt(this.value, 10);
     const maxRet    = selectedDistribution?.maxReturnable || 0;
@@ -814,7 +816,7 @@
     const valid     = !isNaN(qty) && qty >= 1 && qty <= maxRet;
     document.getElementById('r_sumUnits').textContent  = valid ? qty : '0';
     document.getElementById('r_sumRefund').textContent = valid ? fmt(qty * unitPrice) : '0.00';
-    document.getElementById('confirmReturnBtn').disabled = !selectedDistribution || !valid;
+    document.getElementById('confirmReturnBtn').disabled = !valid;
   });
 
   // Confirm return
