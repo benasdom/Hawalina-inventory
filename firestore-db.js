@@ -692,11 +692,53 @@ export async function returnStock(returnData) {
       if (maxReturnable <= 0) {
         throw new Error('All items have already been returned');
       }
-
-      if (returnQuantity > maxReturnable) {
-        throw new Error(`Cannot return more than ${maxReturnable} units (already returned: ${totalReturnedSoFar})`);
+if (returnQuantity > maxReturnable) {
+        throw new Error(
+          `Cannot return ${returnQuantity} units — only ${maxReturnable} remaining ` +
+          `(${totalReturnedSoFar} already returned)`
+        );
       }
 
+      // ── Validate agent still holds enough of this specific product ──
+      const salesSnap = await getDocs(
+        query(
+          collection(db, 'sales'),
+          where('agentId',   '==', returnData.agentId),
+          where('hairBrand', '==', distribution.hairBrand),
+          where('color',     '==', distribution.color),
+          where('length',    '==', distribution.length)
+        )
+      );
+      let totalSoldOfProduct = 0;
+      salesSnap.forEach(d => { totalSoldOfProduct += (d.data().quantity || 0); });
+
+      const returnsSnap = await getDocs(
+        query(
+          collection(db, 'stockReturns'),
+          where('agentId', '==', returnData.agentId)
+        )
+      );
+      let totalReturnedOfProduct = 0;
+      returnsSnap.forEach(d => {
+        const r = d.data();
+        if (r.hairBrand === distribution.hairBrand &&
+            r.color     === distribution.color     &&
+            r.length    === distribution.length) {
+          totalReturnedOfProduct += (r.returnQuantity || 0);
+        }
+      });
+
+      const stockOnHand = totalDistributed - totalSoldOfProduct - totalReturnedOfProduct;
+      if (returnQuantity > stockOnHand) {
+        throw new Error(
+          `Cannot return ${returnQuantity} unit(s) — agent only has ${Math.max(0, stockOnHand)} ` +
+          `unit(s) of ${distribution.hairBrand} ${distribution.color} ${distribution.length}" remaining after sales.`
+        );
+      }
+      // ── End stock on hand check ─────────────────────────────────
+
+      // ── 4. Process returns across items ───────────────────────
+      // transactionTimestamp captured once for consistent audit correlation
       // 4. READ ALL warehouse documents
       const uniqueStockIds = [...new Set(items.map(item => item.warehouseStockId))];
       const warehouseRefs = uniqueStockIds.map(id => doc(db, 'warehouse', id));
