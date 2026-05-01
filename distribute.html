@@ -318,7 +318,7 @@
 
         <div class="field">
           <label>Units to Return <span class="req">*</span></label>
-          <input type="number" id="r_qty" min="1" placeholder="e.g., 5" disabled />
+          <input type="number" id="r_qty" min="1" placeholder="e.g., 5" disabled onwheel="this.blur()" />
           <div class="helper" id="r_qtyHint"></div>
         </div>
       </div>
@@ -373,7 +373,7 @@
 
     <div class="actions">
       <button class="btn secondary" id="cancelReturnBtn">Cancel</button>
-      <button class="btn warn" id="confirmReturnBtn" disabled>↩ Proceed to Return</button>
+      <button class="btn warn" id="confirmReturnBtn" disabled>↩ Confirm Return</button>
     </div>
   </div>
 </div>
@@ -801,7 +801,7 @@
     document.getElementById('r_qtyHint').textContent  =
       `Max returnable: ${maxReturnable} unit${maxReturnable !== 1 ? 's' : ''}`;
 
-    document.getElementById('r_qty').max      = maxReturnable;
+    // max attribute intentionally not set — button disabled state handles validation
     document.getElementById('r_qty').disabled = false;
     // Note: intentionally no .focus() here — calling focus() from inside a
     // change event causes some browsers to fire a synthetic mouseup that
@@ -859,7 +859,7 @@
     });
 
     btn.disabled = false;
-    btn.innerHTML = '↩ Proceed to Return';
+    btn.innerHTML = '↩ Confirm Return';
 
     if (result.success) {
       closeReturnModal();
