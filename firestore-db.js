@@ -597,7 +597,9 @@ export async function returnStock(returnData) {
 
   try {
     const result = await runTransaction(db, async (transaction) => {
-      // Fetch distribution
+      // ========== PHASE 1: READ ALL DOCUMENTS FIRST ==========
+      
+      // 1. Read distribution
       const distRef = doc(db, 'distributions', returnData.distributionId);
       const distSnap = await transaction.get(distRef);
 
@@ -611,7 +613,7 @@ export async function returnStock(returnData) {
         throw new Error('Distribution does not belong to this agent');
       }
 
-      // Normalize items
+      // 2. Normalize items from distribution
       let items = [];
 
       if (distribution.items?.length) {
@@ -633,7 +635,7 @@ export async function returnStock(returnData) {
         }];
       }
 
-      // Validate return quantity
+      // 3. Validate return quantity
       const totalDistributed = items.reduce((sum, item) => sum + item.quantity, 0);
       const totalReturnedSoFar = items.reduce((sum, item) => sum + (item.returnedQuantity || 0), 0);
       const maxReturnable = totalDistributed - totalReturnedSoFar;
@@ -646,12 +648,52 @@ export async function returnStock(returnData) {
         throw new Error(`Cannot return more than ${maxReturnable} units (already returned: ${totalReturnedSoFar})`);
       }
 
-      // Process returns
+      // 4. READ ALL warehouse documents (collect unique warehouseStockIds)
+      const warehouseRefs = [];
+      const warehouseItemsMap = new Map(); // Store item info keyed by warehouseStockId
+      
+      for (const item of items) {
+        if (!warehouseRefs.find(ref => ref.id === item.warehouseStockId)) {
+          const warehouseRef = doc(db, 'warehouse', item.warehouseStockId);
+          warehouseRefs.push(warehouseRef);
+          warehouseItemsMap.set(item.warehouseStockId, {
+            item: item,
+            originalReturned: item.returnedQuantity || 0
+          });
+        }
+      }
+      
+      // Execute all warehouse reads
+      const warehouseSnaps = await Promise.all(
+        warehouseRefs.map(ref => transaction.get(ref))
+      );
+      
+      // Store warehouse data
+      const warehouseDataMap = new Map();
+      for (let i = 0; i < warehouseRefs.length; i++) {
+        if (!warehouseSnaps[i].exists()) {
+          throw new Error(`Warehouse stock not found: ${warehouseRefs[i].id}`);
+        }
+        warehouseDataMap.set(warehouseRefs[i].id, warehouseSnaps[i].data());
+      }
+
+      // 5. READ agent document
+      const agentRef = doc(db, 'agents', returnData.agentId);
+      const agentSnap = await transaction.get(agentRef);
+
+      if (!agentSnap.exists()) {
+        throw new Error('Agent not found');
+      }
+      const agentData = agentSnap.data();
+
+      // ========== PHASE 2: PROCESS CALCULATIONS (NO MORE READS) ==========
+      
       let remainingToReturn = returnQuantity;
       let totalRefundCents = 0;
       const transactionTimestamp = Timestamp.now();
       const updatedItems = [];
       const returnedBreakdown = [];
+      const warehouseUpdates = new Map(); // Store updates keyed by warehouseRef
 
       for (let i = 0; i < items.length && remainingToReturn > 0; i++) {
         const originalItem = items[i];
@@ -666,14 +708,12 @@ export async function returnStock(returnData) {
             throw new Error(`Missing warehouseStockId for item: ${originalItem.hairBrand || 'Unknown'}`);
           }
 
-          const warehouseRef = doc(db, 'warehouse', originalItem.warehouseStockId);
-          const warehouseSnap = await transaction.get(warehouseRef);
-
-          if (!warehouseSnap.exists()) {
-            throw new Error(`Warehouse stock not found: ${originalItem.warehouseStockId}`);
+          // Get warehouse data from our pre-fetched map
+          const warehouseData = warehouseDataMap.get(originalItem.warehouseStockId);
+          if (!warehouseData) {
+            throw new Error(`Warehouse data missing: ${originalItem.warehouseStockId}`);
           }
-
-          const warehouseData = warehouseSnap.data();
+          
           const currentDistributed = warehouseData.distributedQuantity || 0;
           const currentAvailable = warehouseData.availableQuantity || 0;
           const importPrice = warehouseData.importPrice || 0;
@@ -682,10 +722,12 @@ export async function returnStock(returnData) {
             throw new Error(`Stock mismatch for ${originalItem.hairBrand}`);
           }
 
+          // Calculate new values
           const newAvailable = currentAvailable + returnQty;
           const newDistributed = currentDistributed - returnQty;
 
-          transaction.update(warehouseRef, {
+          // Store warehouse update for later
+          warehouseUpdates.set(originalItem.warehouseStockId, {
             availableQuantity: newAvailable,
             distributedQuantity: newDistributed,
             availableTotalValue: newAvailable * importPrice,
@@ -693,15 +735,18 @@ export async function returnStock(returnData) {
             lastUpdated: serverTimestamp()
           });
 
+          // Update item
           updatedItem = {
             ...originalItem,
             returnedQuantity: alreadyReturned + returnQty
           };
 
+          // Calculate refund with integer math
           const unitPriceCents = Math.round((originalItem.unitAgentPrice || 0) * 100);
           const itemRefundCents = returnQty * unitPriceCents;
           totalRefundCents += itemRefundCents;
 
+          // Track breakdown
           returnedBreakdown.push({
             warehouseStockId: originalItem.warehouseStockId,
             hairBrand: originalItem.hairBrand,
@@ -724,20 +769,23 @@ export async function returnStock(returnData) {
         throw new Error(`Failed to process all units. ${remainingToReturn} units remaining.`);
       }
 
-      // Update agent
-      const agentRef = doc(db, 'agents', returnData.agentId);
-      const agentSnap = await transaction.get(agentRef);
-
-      if (!agentSnap.exists()) {
-        throw new Error('Agent not found');
-      }
-
-      const agentData = agentSnap.data();
       const totalRefund = totalRefundCents / 100;
       const currentOwedCents = Math.round((agentData.totalOwed || 0) * 100);
       const newOwedCents = Math.max(0, currentOwedCents - totalRefundCents);
       const newOwed = newOwedCents / 100;
 
+      const newTotalReturned = totalReturnedSoFar + returnQuantity;
+      const isFullyReturned = newTotalReturned >= totalDistributed;
+
+      // ========== PHASE 3: EXECUTE ALL WRITES ==========
+      
+      // 1. Update all warehouse documents
+      for (const [stockId, updateData] of warehouseUpdates) {
+        const warehouseRef = doc(db, 'warehouse', stockId);
+        transaction.update(warehouseRef, updateData);
+      }
+
+      // 2. Update agent document
       transaction.update(agentRef, {
         totalOwed: newOwed,
         lastUpdated: serverTimestamp(),
@@ -747,10 +795,7 @@ export async function returnStock(returnData) {
         totalRefunded: (agentData.totalRefunded || 0) + totalRefund
       });
 
-      // Update distribution
-      const newTotalReturned = totalReturnedSoFar + returnQuantity;
-      const isFullyReturned = newTotalReturned >= totalDistributed;
-
+      // 3. Update distribution document
       transaction.update(distRef, {
         items: updatedItems,
         returnedQuantity: newTotalReturned,
@@ -762,7 +807,7 @@ export async function returnStock(returnData) {
         lastReturnAmount: totalRefund
       });
 
-      // Create return record
+      // 4. Create return record document
       const returnRef = doc(collection(db, 'stockReturns'));
       transaction.set(returnRef, {
         agentId: returnData.agentId,
