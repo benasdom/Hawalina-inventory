@@ -402,7 +402,8 @@
 
       // Total Selling Value (from sales)
       const totalSellingValue = sales.reduce((sum, sale) => {
-        return sum + (sale.totalSale || sale.amount || 0);
+        return sum + (sale.totalSellingPrice || 0);
+
       }, 0);
 
       const totalCompanyProfit = totalAgentValue - totalImportValue;
@@ -454,7 +455,7 @@
         const agentSales = sales.filter(s => s.agentId === agent.id);
         
         const totalAgentValue = agentDists.reduce((sum, d) => sum + getTotalAgentValue(d), 0);
-        const totalSellingValue = agentSales.reduce((sum, s) => sum + (s.totalSale || s.amount || 0), 0);
+        const totalSellingValue = agentSales.reduce((sum, s) => sum + (s.totalSellingPrice || 0), 0);
         const totalCommission = agentSales.reduce((sum, s) => sum + (s.agentCommission || 0), 0);
 
         return { 
